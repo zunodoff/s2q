@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Политика использования Cookies - Anivest</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/">
+                    <i class="fas fa-play-circle"></i>
+                    Anivest
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link">Главная</a></li>
+                <li><a href="/catalog" class="nav-link">Каталог</a></li>
+                <li><a href="/subscription" class="nav-link">Подписка</a></li>
+            </ul>
+            <div class="nav-search">
+                <form action="/catalog" method="GET" class="search-form">
+                    <input type="text" name="q" placeholder="Поиск аниме..." class="search-input">
+                    <button type="submit" class="search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- БЛОК АВТОРИЗАЦИИ -->
+            <div class="nav-user">
+                {% if current_user %}
+                <div class="user-menu">
+                    <div class="user-avatar">
+                        <div class="avatar-img">
+                            {{ current_user.username[0].upper() }}
+                        </div>
+                        <span class="username">{{ current_user.username }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="user-dropdown">
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-user"></i> Профиль
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-heart"></i> Избранное
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-history"></i> История
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-cog"></i> Настройки
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('logout') }}" class="dropdown-item">
+                            <i class="fas fa-sign-out-alt"></i> Выйти
+                        </a>
+                    </div>
+                </div>
+                {% else %}
+                <div class="auth-buttons">
+                    <a href="{{ url_for('login') }}" class="btn btn-outline btn-sm">Войти</a>
+                    <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">Регистрация</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <main class="legal-main">
+        <div class="container">
+            <!-- Хлебные крошки -->
+            <nav class="breadcrumbs">
+                <a href="/"><i class="fas fa-home"></i> Главная</a>
+                <span class="separator">→</span>
+                <span class="current">Политика использования Cookies</span>
+            </nav>
+
+            <div class="legal-content">
+                <h1><i class="fas fa-cookie-bite"></i> Политика использования Cookies</h1>
+                <p class="last-updated">
+                    <i class="fas fa-calendar-alt"></i>
+                    Последнее обновление: 30 июня 2025 года
+                </p>
+
+                <!-- Важное уведомление о cookies -->
+                <div class="cookie-notice">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <h3>Что такое cookies?</h3>
+                        <p>Cookies — это небольшие текстовые файлы, которые сохраняются на вашем устройстве при посещении веб-сайтов. Для обработки запросов, связанных с cookies, мы используем анонимную систему пересылки писем.</p>
+                    </div>
+                </div>
+
+                <section id="section-2">
+                    <h2><i class="fas fa-cogs"></i> 2. Как мы используем cookies</h2>
+                    <p>Anivest использует cookies для:</p>
+
+                    <div class="usage-grid">
+                        <div class="usage-item">
+                            <i class="fas fa-server"></i>
+                            <span>Обеспечения работы сайта</span>
+                        </div>
+                        <div class="usage-item">
+                            <i class="fas fa-user-cog"></i>
+                            <span>Запоминания ваших предпочтений</span>
+                        </div>
+                        <div class="usage-item">
+                            <i class="fas fa-magic"></i>
+                            <span>Улучшения пользовательского опыта</span>
+                        </div>
+                        <div class="usage-item">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Анализа трафика и использования</span>
+                        </div>
+                        <div class="usage-item">
+                            <i class="fas fa-user-check"></i>
+                            <span>Персонализации контента</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="section-3">
+                    <h2><i class="fas fa-list"></i> 3. Типы cookies, которые мы используем</h2>
+
+                    <div class="cookie-types">
+                        <!-- Обязательные cookies -->
+                        <div class="cookie-type">
+                            <div class="cookie-header essential">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <div>
+                                    <h3>3.1. Обязательные cookies</h3>
+                                    <div class="cookie-meta">
+                                        <span class="purpose">Цель: Необходимы для работы сайта</span>
+                                        <span class="consent">Согласие: Не требуется</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="cookie-examples">
+                                <div class="cookie-example">
+                                    <code>session_id</code>
+                                    <span>идентификатор сессии</span>
+                                </div>
+                                <div class="cookie-example">
+                                    <code>csrf_token</code>
+                                    <span>защита от CSRF атак</span>
+                                </div>
+                                <div class="cookie-example">
+                                    <code>auth_token</code>
+                                    <span>авторизация пользователя</span>
+                                </div>
+                                <div class="cookie-example">
+                                    <code>language</code>
+                                    <span>выбранный язык</span>
+                                </div>
+                            </div>
+                            <div class="cookie-duration">
+                                <i class="fas fa-clock"></i>
+                                <span>Срок хранения: До закрытия браузера / 30 дней</span>
+                            </div>
+                        </div>
+
+                        <!-- Функциональные cookies -->
+                        <div class="cookie-type">
+                            <div class="cookie-header functional">
+                                <i class="fas fa-cog"></i>
+                                <div>
+                                    <h3>3.2. Функциональные cookies</h3>
+                                    <div class="cookie-meta">
+                                        <span class="purpose">Цель: Запоминание настроек и предпочтений</span>
+                                        <span class="consent required">Согласие: Требуется</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="cookie-examples">
+                                <div class="cookie-example">
+                                    <code>user_preferences</code>
+                                    <span>настройки интерфейса</span>
+                                </div>
+                                <div class="cookie-example">
+                                    <code>watch_progress</code>
+                                    <span>прогресс просмотра</span>
+                                </div>
+                                <div class="cookie-example">
+                                    <code>volume_level</code>
+                                    <span>уровень громкости</span>
+                                </div>
+                                <div class="cookie-example">
+                                    <code>quality_settings</code>
+                                    <span>настройки качества видео</span>
+                                </div>
+                                <div class="cookie-example">
+                                    <code>theme</code>
+                                    <span>выбранная тема оформления</span>
+                                </div>
+                            </div>
+                            <div class="cookie-duration">
+                                <i class="fas fa-clock"></i>
+                                <span>Срок хранения: 1 год</span>
+                            </div>
+                        </div>
+
+                        <!-- Аналитические cookies -->
+                        <div class="cookie-type">
+                            <div class="cookie-header analytics">
+                                <i class="fas fa-chart-bar"></i>
+                                <div>
+                                    <h3>3.3. Аналитические cookies</h3>
+                                    <div class="cookie-meta">
+                                        <span class="purpose">Цель: Анализ использования сайта</span>
+                                        <span class="consent required">Согласие: Требуется</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="cookie-providers">
+                                <div class="provider">
+                                    <strong>Google Analytics:</strong> _ga, _ga_*, _gid
+                                </div>
+                                <div class="provider">
+                                    <strong>Yandex.Metrica:</strong> _ym_*, _ym_uid
+                                </div>
+                                <div class="provider">
+                                    <strong>Собственная аналитика:</strong> anivest_analytics
+                                </div>
+                            </div>
+                            <div class="cookie-data">
+                                <strong>Данные:</strong> Страницы, время посещения, источники трафика, демография
+                            </div>
+                            <div class="cookie-duration">
+                                <i class="fas fa-clock"></i>
+                                <span>Срок хранения: 2 года</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="section-4">
+                    <h2><i class="fas fa-sliders-h"></i> 4. Управление cookies</h2>
+
+                    <div class="control-methods">
+                        <div class="control-method">
+                            <div class="method-header">
+                                <i class="fas fa-toggle-on"></i>
+                                <h3>4.1. Центр настройки cookies</h3>
+                            </div>
+                            <p>Вы можете управлять cookies через наш центр настройки:</p>
+                            <div class="cookie-controls">
+                                <button class="btn btn-primary" onclick="openCookieSettings()">
+                                    <i class="fas fa-cog"></i> Настройки Cookies
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="control-method">
+                            <div class="method-header">
+                                <i class="fas fa-browser"></i>
+                                <h3>4.2. Настройки браузера</h3>
+                            </div>
+                            <div class="browser-instructions">
+                                <div class="browser-item">
+                                    <i class="fab fa-chrome"></i>
+                                    <div>
+                                        <strong>Chrome:</strong>
+                                        <span>Настройки → Конфиденциальность и безопасность → Файлы cookie</span>
+                                    </div>
+                                </div>
+                                <div class="browser-item">
+                                    <i class="fab fa-firefox"></i>
+                                    <div>
+                                        <strong>Firefox:</strong>
+                                        <span>Настройки → Приватность и защита → Файлы cookie</span>
+                                    </div>
+                                </div>
+                                <div class="browser-item">
+                                    <i class="fab fa-safari"></i>
+                                    <div>
+                                        <strong>Safari:</strong>
+                                        <span>Настройки → Конфиденциальность → Файлы cookie</span>
+                                    </div>
+                                </div>
+                                <div class="browser-item">
+                                    <i class="fab fa-edge"></i>
+                                    <div>
+                                        <strong>Edge:</strong>
+                                        <span>Настройки → Файлы cookie и разрешения сайтов</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="section-9">
+                    <h2><i class="fas fa-envelope"></i> 9. Контакты</h2>
+                    <div class="contact-box">
+                        <div class="contact-item">
+                            <i class="fas fa-envelope"></i>
+                            <div>
+                                <p>По вопросам, связанным с cookies, пишите: <a href="mailto:[email protected]">[email protected]</a></p>
+                                <p class="contact-note">Письма пересылаются на защищённый адрес через анонимную систему пересылки.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Подпись документа -->
+                <div class="signature">
+                    <div class="signature-line"></div>
+                    <p><strong>Администрация Anivest.com</strong></p>
+                    <p>Дата: 30 июня 2025 года</p>
+                </div>
+
+                <!-- Связанные документы -->
+                <div class="related-documents">
+                    <h3><i class="fas fa-file-alt"></i> Связанные документы</h3>
+                    <div class="doc-links">
+                        <a href="/terms-of-service" class="doc-link">
+                            <i class="fas fa-file-contract"></i>
+                            <span>Пользовательское соглашение</span>
+                        </a>
+                        <a href="/privacy-policy" class="doc-link">
+                            <i class="fas fa-user-shield"></i>
+                            <span>Политика конфиденциальности</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Футер -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <i class="fas fa-play-circle"></i>
+                        Anivest
+                    </div>
+                    <p>Ваш портал в мир аниме</p>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Правовая информация</h4>
+                    <ul>
+                        <li><a href="/terms-of-service">Пользовательское соглашение</a></li>
+                        <li><a href="/privacy-policy">Политика конфиденциальности</a></li>
+                        <li><a href="/cookie-policy">Политика Cookies</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2025 Anivest. Все права защищены.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function openCookieSettings() {
+            // Здесь будет код для открытия центра настройки cookies
+            alert('Центр настройки cookies будет реализован в следующей версии');
+        }
+    </script>
+</body>
+</html>

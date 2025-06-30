@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMCA-процедуры - Anivest</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/">
+                    <i class="fas fa-play-circle"></i>
+                    Anivest
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link">Главная</a></li>
+                <li><a href="/catalog" class="nav-link">Каталог</a></li>
+                <li><a href="/subscription" class="nav-link">Подписка</a></li>
+            </ul>
+            <div class="nav-search">
+                <form action="/catalog" method="GET" class="search-form">
+                    <input type="text" name="q" placeholder="Поиск аниме..." class="search-input">
+                    <button type="submit" class="search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- БЛОК АВТОРИЗАЦИИ -->
+            <div class="nav-user">
+                {% if current_user %}
+                <div class="user-menu">
+                    <div class="user-avatar">
+                        <div class="avatar-img">
+                            {{ current_user.username[0].upper() }}
+                        </div>
+                        <span class="username">{{ current_user.username }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="user-dropdown">
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-user"></i> Профиль
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-heart"></i> Избранное
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-history"></i> История
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-cog"></i> Настройки
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('logout') }}" class="dropdown-item">
+                            <i class="fas fa-sign-out-alt"></i> Выйти
+                        </a>
+                    </div>
+                </div>
+                {% else %}
+                <div class="auth-buttons">
+                    <a href="{{ url_for('login') }}" class="btn btn-outline btn-sm">Войти</a>
+                    <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">Регистрация</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <main class="legal-main">
+        <div class="container">
+            <!-- Хлебные крошки -->
+            <nav class="breadcrumbs">
+                <a href="/"><i class="fas fa-home"></i> Главная</a>
+                <span class="separator">→</span>
+                <span class="current">DMCA-процедуры</span>
+            </nav>
+
+            <div class="legal-content">
+                <h1><i class="fas fa-copyright"></i> DMCA-процедуры</h1>
+                <p class="last-updated">
+                    <i class="fas fa-calendar-alt"></i>
+                    Последнее обновление: 30 июня 2025 года
+                </p>
+
+                <!-- Важное уведомление -->
+                <div class="important-notice">
+                    <i class="fas fa-shield-alt"></i>
+                    <div>
+                        <h3>Защита авторских прав</h3>
+                        <p>Anivest.com уважает права интеллектуальной собственности и строго следует требованиям Digital Millennium Copyright Act (DMCA). Мы обеспечиваем быстрое реагирование на обоснованные жалобы и поддерживаем справедливую систему защиты прав.</p>
+                    </div>
+                </div>
+
+                <!-- Навигация по документу -->
+                <div class="document-nav">
+                    <h4><i class="fas fa-list"></i> Быстрая навигация:</h4>
+                    <div class="nav-grid">
+                        <a href="#section-1" class="nav-item">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Общие положения</span>
+                        </a>
+                        <a href="#section-2" class="nav-item">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>Подача жалобы</span>
+                        </a>
+                        <a href="#section-4" class="nav-item">
+                            <i class="fas fa-reply"></i>
+                            <span>Встречное уведомление</span>
+                        </a>
+                        <a href="#section-6" class="nav-item">
+                            <i class="fas fa-envelope"></i>
+                            <span>Контакты</span>
+                        </a>
+                    </div>
+                </div>
+
+                <section id="section-1">
+                    <h2><i class="fas fa-info-circle"></i> 1. Общие положения</h2>
+                    <p>Anivest.com (далее — «Сервис») уважает права интеллектуальной собственности и следует требованиям Digital Millennium Copyright Act (DMCA). Мы не храним и не размещаем видеоконтент, а предоставляем ссылки на сторонние платформы, за которые не несём ответственности.</p>
+
+                    <div class="warning-box">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <h4>Важная информация</h4>
+                            <p>Если вы считаете, что ваши авторские права нарушены, внимательно следуйте процедуре, описанной в этом документе. Ложные заявления могут повлечь правовые последствия.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="section-2">
+                    <h2><i class="fas fa-exclamation-triangle"></i> 2. Подача жалобы</h2>
+                    <p>Для подачи жалобы на нарушение авторских прав отправьте уведомление на: <a href="mailto:dmca@anivest.com" class="external-link">dmca@anivest.com</a></p>
+
+                    <div class="numbered-list">
+                        <div class="list-item">
+                            <div class="number">1</div>
+                            <div class="content">
+                                <strong>Ваши данные:</strong> Укажите ваше имя, email и подпись (электронная или физическая)
+                            </div>
+                        </div>
+
+                        <div class="list-item">
+                            <div class="number">2</div>
+                            <div class="content">
+                                <strong>Описание произведения:</strong> Подробно опишите произведение, чьи права нарушены
+                            </div>
+                        </div>
+
+                        <div class="list-item">
+                            <div class="number">3</div>
+                            <div class="content">
+                                <strong>Местоположение контента:</strong> Укажите URL или точное описание места, где размещён спорный контент
+                            </div>
+                        </div>
+
+                        <div class="list-item">
+                            <div class="number">4</div>
+                            <div class="content">
+                                <strong>Полномочия:</strong> Заявление, что вы являетесь правообладателем или уполномочены действовать от его имени
+                            </div>
+                        </div>
+
+                        <div class="list-item">
+                            <div class="number">5</div>
+                            <div class="content">
+                                <strong>Добросовестность:</strong> Заявление, что информация в жалобе точна и подана добросовестно
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="section-3">
+                    <h2><i class="fas fa-cogs"></i> 3. Действия Сервиса</h2>
+
+                    <div class="feature-grid">
+                        <div class="feature-item">
+                            <i class="fas fa-clock"></i>
+                            <div>
+                                <strong>Сроки рассмотрения:</strong> Мы рассматриваем жалобы в течение 7 рабочих дней
+                            </div>
+                        </div>
+
+                        <div class="feature-item">
+                            <i class="fas fa-trash-alt"></i>
+                            <div>
+                                <strong>Удаление контента:</strong> При обоснованной жалобе удаляем ссылку на спорный контент
+                            </div>
+                        </div>
+
+                        <div class="feature-item">
+                            <i class="fas fa-bell"></i>
+                            <div>
+                                <strong>Уведомления:</strong> Информируем связанного пользователя о принятых мерах
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cookie-notice">
+                        <i class="fas fa-gavel"></i>
+                        <div>
+                            <h4>Возможные санкции</h4>
+                            <p>В зависимости от тяжести нарушения мы можем применить одну из трех мер: предупреждение, временная блокировка или постоянная блокировка аккаунта.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="section-4">
+                    <h2><i class="fas fa-reply"></i> 4. Встречное уведомление</h2>
+                    <p>Если вы считаете, что контент удалён ошибочно, отправьте встречное уведомление на <a href="mailto:dmca@anivest.com" class="external-link">dmca@anivest.com</a></p>
+
+                    <div class="rights-grid">
+                        <div class="right-item">
+                            <div class="right-icon">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <h4>Ваши данные</h4>
+                            <p>Укажите имя, email и контактную информацию</p>
+                        </div>
+
+                        <div class="right-item">
+                            <div class="right-icon">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <h4>Описание контента</h4>
+                            <p>Подробно опишите удалённый контент и причины, почему он не нарушает права</p>
+                        </div>
+
+                        <div class="right-item">
+                            <div class="right-icon">
+                                <i class="fas fa-handshake"></i>
+                            </div>
+                            <h4>Согласие</h4>
+                            <p>Дайте согласие на передачу ваших данных правообладателю</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="section-5">
+                    <h2><i class="fas fa-ban"></i> 5. Повторные нарушения</h2>
+                    <div class="prohibition-grid">
+                        <div class="prohibition-item">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <div>
+                                <strong>Политика трех предупреждений:</strong>
+                                Пользователи, неоднократно нарушающие авторские права, могут быть заблокированы
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="section-6">
+                    <h2><i class="fas fa-envelope"></i> 6. Контакты</h2>
+                    <div class="contact-grid">
+                        <div class="contact-card">
+                            <i class="fas fa-envelope"></i>
+                            <h4>DMCA жалобы</h4>
+                            <a href="mailto:dmca@anivest.com">dmca@anivest.com</a>
+                            <p>Письма пересылаются на защищённый адрес через анонимную систему пересылки для обеспечения конфиденциальности.</p>
+                        </div>
+                    </div>
+
+                    <div class="privacy-notice">
+                        <i class="fas fa-shield-alt"></i>
+                        <div>
+                            <h4>Конфиденциальность</h4>
+                            <p>Мы используем анонимную систему пересылки писем для защиты конфиденциальности всех участников процедуры DMCA. Ваши данные обрабатываются в соответствии с нашей <a href="/privacy-policy">Политикой конфиденциальности</a>.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Подпись документа -->
+                <div class="signature">
+                    <div class="signature-line"></div>
+                    <p><strong>Администрация Anivest.com</strong></p>
+                    <p>Дата: 30 июня 2025 года</p>
+                </div>
+
+                <!-- Связанные документы -->
+                <div class="related-documents">
+                    <h3><i class="fas fa-file-alt"></i> Связанные документы</h3>
+                    <div class="doc-links">
+                        <a href="/terms-of-service" class="doc-link">
+                            <i class="fas fa-file-contract"></i>
+                            <span>Пользовательское соглашение</span>
+                        </a>
+                        <a href="/privacy-policy" class="doc-link">
+                            <i class="fas fa-user-shield"></i>
+                            <span>Политика конфиденциальности</span>
+                        </a>
+                        <a href="/cookie-policy" class="doc-link">
+                            <i class="fas fa-cookie-bite"></i>
+                            <span>Политика Cookies</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Футер -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <i class="fas fa-play-circle"></i>
+                        Anivest
+                    </div>
+                    <p>Ваш портал в мир аниме</p>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Правовая информация</h4>
+                    <ul>
+                        <li><a href="/terms-of-service">Пользовательское соглашение</a></li>
+                        <li><a href="/privacy-policy">Политика конфиденциальности</a></li>
+                        <li><a href="/dmca">DMCA-процедуры</a></li>
+                        <li><a href="/cookie-policy">Политика Cookies</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Поддержка</h4>
+                    <ul>
+                        <li><a href="/help">Центр помощи</a></li>
+                        <li><a href="/contact">Связаться с нами</a></li>
+                        <li><a href="/dmca">Нарушение авторских прав</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Anivest</h4>
+                    <ul>
+                        <li><a href="/about">О нас</a></li>
+                        <li><a href="/blog">Блог</a></li>
+                        <li><a href="/careers">Карьера</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2025 Anivest. Все права защищены.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Плавная прокрутка к якорям
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Анимация появления секций при скролле
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('fade-in');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('section').forEach(section => {
+            observer.observe(section);
+        });
+    </script>
+</body>
+</html>

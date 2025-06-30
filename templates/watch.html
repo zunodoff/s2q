@@ -1,0 +1,2053 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ anime.title }} - Anivest</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        /* Стили плеера из оригинального файла */
+        .player-container {
+            position: relative;
+            aspect-ratio: 16/9;
+            background: #000;
+            overflow: hidden;
+            border-radius: var(--border-radius-lg);
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .anime-player {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        .player-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 1.2rem;
+            z-index: 5;
+            display: none;
+        }
+
+        .player-loading.show {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(139, 92, 246, 0.3);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .player-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            gap: 1rem;
+        }
+
+        .player-placeholder i {
+            font-size: 4rem;
+        }
+
+        /* Навигация по сериям */
+        .episode-navigation-wrapper {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .episode-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .nav-btn {
+            background: var(--gradient-primary);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+            font-size: 0.95rem;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            background: var(--bg-tertiary);
+            box-shadow: none;
+        }
+
+        .current-episode-info {
+            text-align: center;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .episode-total {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* СИСТЕМА КОММЕНТАРИЕВ */
+        .comments-section {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            margin-top: 3rem;
+            overflow: hidden;
+        }
+
+        .comments-header {
+            padding: 2rem;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+            background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-tertiary) 100%);
+        }
+
+        .comments-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .comments-count {
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .comments-filters {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .filter-select {
+            background: var(--bg-tertiary);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: var(--border-radius);
+            padding: 0.5rem 0.75rem;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .filter-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .filter-checkbox input[type="checkbox"] {
+            accent-color: var(--primary);
+        }
+
+        /* Форма добавления комментария */
+        .comment-form {
+            padding: 2rem;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .auth-prompt {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .auth-prompt-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .comment-form-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .user-avatar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .avatar-img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .user-info {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .comment-options {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .episode-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .episode-input {
+            background: var(--bg-tertiary);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: var(--border-radius);
+            padding: 0.4rem 0.75rem;
+            color: var(--text-primary);
+            width: 80px;
+            text-align: center;
+        }
+
+        .rating-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .rating-stars {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .rating-star {
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: var(--transition);
+        }
+
+        .rating-star:hover,
+        .rating-star.active {
+            color: var(--warning);
+            transform: scale(1.1);
+        }
+
+        .spoiler-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--bg-tertiary);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .spoiler-toggle.active {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: var(--error);
+            color: var(--error);
+        }
+
+        .spoiler-toggle input[type="checkbox"] {
+            display: none;
+        }
+
+        .comment-textarea {
+            width: 100%;
+            min-height: 120px;
+            background: var(--bg-tertiary);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            resize: vertical;
+            transition: var(--transition);
+        }
+
+        .comment-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+        }
+
+        .comment-textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        .comment-form-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .char-counter {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .char-counter.warning {
+            color: var(--warning);
+        }
+
+        .char-counter.error {
+            color: var(--error);
+        }
+
+        .submit-comment-btn {
+            background: var(--gradient-primary);
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 50px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .submit-comment-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+        }
+
+        .submit-comment-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Список комментариев */
+        .comments-list {
+            padding: 0;
+        }
+
+        .comment-item {
+            padding: 2rem;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+            transition: var(--transition);
+        }
+
+        .comment-item:hover {
+            background: rgba(139, 92, 246, 0.05);
+        }
+
+        .comment-item:last-child {
+            border-bottom: none;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .comment-author {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .comment-author-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .author-name {
+            color: var(--text-primary);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .author-role {
+            padding: 0.15rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .author-role.admin {
+            background: var(--error);
+            color: white;
+        }
+
+        .author-role.moderator {
+            background: var(--warning);
+            color: white;
+        }
+
+        .author-role.premium {
+            background: var(--primary);
+            color: white;
+        }
+
+        .comment-meta {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .comment-rating {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            color: var(--warning);
+            font-weight: 600;
+        }
+
+        .episode-badge {
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .spoiler-badge {
+            background: var(--error);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .comment-content {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .comment-content.spoiler {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            position: relative;
+        }
+
+        .spoiler-warning {
+            color: var(--error);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .spoiler-blur {
+            filter: blur(5px);
+            user-select: none;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .spoiler-blur.revealed {
+            filter: none;
+            user-select: auto;
+            cursor: auto;
+        }
+
+        .spoiler-reveal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--error);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .spoiler-reveal:hover {
+            transform: translate(-50%, -50%) scale(1.05);
+        }
+
+        .comment-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .comment-vote {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .vote-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 50px;
+            padding: 0.4rem 0.75rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.85rem;
+        }
+
+        .vote-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .vote-btn.active.like {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+
+        .vote-btn.active.dislike {
+            background: var(--error);
+            color: white;
+            border-color: var(--error);
+        }
+
+        .comment-time {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .delete-comment {
+            color: var(--error);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: var(--transition);
+        }
+
+        .delete-comment:hover {
+            color: var(--error);
+            text-decoration: underline;
+        }
+
+        .no-comments {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-muted);
+        }
+
+        .no-comments i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        .load-more-comments {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .load-more-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            padding: 0.75rem 2rem;
+            border-radius: 50px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .load-more-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--primary);
+        }
+
+        /* Мобильная адаптация комментариев */
+        @media (max-width: 768px) {
+            .comments-filters {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .comment-form-header,
+            .comment-form-footer {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .comment-options {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .comment-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .comment-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .auth-prompt-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        /* Остальные стили из оригинального файла... */
+        .episodes-control {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.1);
+        }
+
+        .episodes-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .episodes-header h3 {
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .episodes-info {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .episodes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 1rem;
+        }
+
+        .episode-card {
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .episode-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 15px 30px rgba(139, 92, 246, 0.3);
+        }
+
+        .episode-card.active {
+            border-color: var(--primary);
+            background: rgba(139, 92, 246, 0.2);
+            box-shadow: 0 10px 25px rgba(139, 92, 246, 0.4);
+        }
+
+        .episode-card.active::before {
+            content: '▶';
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            color: var(--primary);
+            font-size: 0.8rem;
+            z-index: 2;
+        }
+
+        .episode-number {
+            padding: 1.25rem;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--text-primary);
+            border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .episode-title {
+            padding: 0.75rem 1rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-align: center;
+            line-height: 1.4;
+            min-height: 2.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .season-tab {
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-tertiary);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 50px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+            font-weight: 600;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .season-tab::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; right: 0; bottom: 0;
+            background: var(--gradient-primary);
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+
+        .season-tab.active,
+        .season-tab:hover {
+            color: white;
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .season-tab.active::before,
+        .season-tab:hover::before {
+            left: 0;
+        }
+
+        .seasons-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .simple-episodes {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .episode-btn {
+            padding: 0.75rem 1.25rem;
+            background: var(--bg-tertiary);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 50px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+            font-weight: 600;
+            min-width: 80px;
+        }
+
+        .episode-btn:hover,
+        .episode-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/">
+                    <i class="fas fa-play-circle"></i>
+                    Anivest
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link">Главная</a></li>
+                <li><a href="/catalog" class="nav-link">Каталог</a></li>
+                <li><a href="/subscription" class="nav-link">Подписка</a></li>
+            </ul>
+            <div class="nav-search">
+                <form action="/catalog" method="GET" class="search-form">
+                    <input type="text" name="q" placeholder="Поиск аниме..." class="search-input">
+                    <button type="submit" class="search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </div>
+            <!-- Профиль пользователя -->
+            <div class="nav-user">
+                {% if current_user %}
+                <div class="user-menu">
+                    <div class="user-avatar">
+                        <div class="avatar-img">
+                            {{ current_user.username[0].upper() }}
+                        </div>
+                        <span class="username">{{ current_user.username }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="user-dropdown">
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-user"></i> Профиль
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-heart"></i> Избранное
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-history"></i> История
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('logout') }}" class="dropdown-item">
+                            <i class="fas fa-sign-out-alt"></i> Выйти
+                        </a>
+                    </div>
+                </div>
+                {% else %}
+                <div class="auth-buttons">
+                    <a href="{{ url_for('login') }}" class="btn btn-outline">Войти</a>
+                    <a href="{{ url_for('register') }}" class="btn btn-primary">Регистрация</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <main class="watch-main">
+        <div class="container">
+            <!-- Хлебные крошки -->
+            <nav class="breadcrumbs">
+                <a href="/"><i class="fas fa-home"></i> Главная</a>
+                <span class="separator">→</span>
+                <a href="/catalog">Каталог</a>
+                <span class="separator">→</span>
+                <span class="current">{{ anime.title }}</span>
+            </nav>
+
+            <div class="watch-layout">
+                <!-- Кастомный плеер -->
+                <div class="player-section">
+                    <!-- Основной плеер -->
+                    <div class="player-container">
+                        <div class="player-loading" id="playerLoading">
+                            <div class="loading-spinner"></div>
+                            <span>Загрузка эпизода...</span>
+                        </div>
+
+                        {% if anime.link %}
+                        <iframe id="animePlayer"
+                                src="https:{{ anime.link }}"
+                                class="anime-player"
+                                allowfullscreen
+                                allow="autoplay; fullscreen; picture-in-picture"
+                                title="Плеер {{ anime.title }}">
+                        </iframe>
+                        {% else %}
+                        <div class="player-placeholder">
+                            <i class="fas fa-play-circle"></i>
+                            <p>Плеер недоступен</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Навигация по сериям -->
+                    <div class="episode-navigation-wrapper">
+                        <div class="episode-navigation">
+                            <button class="nav-btn" id="prevEpisodeBtn" onclick="previousEpisode()" disabled>
+                                <i class="fas fa-step-backward"></i>
+                                Предыдущая
+                            </button>
+
+                            <div class="current-episode-info">
+                                <div id="episodeInfo">Серия 1</div>
+                                <div class="episode-total">из {{ anime.get('episodes_count', '?') }}</div>
+                            </div>
+
+                            <button class="nav-btn" id="nextEpisodeBtn" onclick="nextEpisode()">
+                                Следующая
+                                <i class="fas fa-step-forward"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Управление сериями -->
+                    {% if anime.get('seasons') or anime.get('episodes_count', 0) > 1 %}
+                    <div class="episodes-control">
+                        <div class="episodes-header">
+                            <h3><i class="fas fa-list-ol"></i> Серии</h3>
+                            <div class="episodes-info">
+                                {% if anime.get('episodes_count') %}
+                                <span>Всего: {{ anime.episodes_count }}</span>
+                                {% endif %}
+                                {% if anime.get('last_episode') %}
+                                <span>Последняя: {{ anime.last_episode }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if anime.get('seasons') %}
+                        <!-- Сезоны и эпизоды -->
+                        <div class="seasons-tabs">
+                            {% for season_num, season in anime.seasons.items() %}
+                            <button class="season-tab {% if loop.first %}active{% endif %}"
+                                    data-season="{{ season_num }}"
+                                    onclick="switchSeason('{{ season_num }}')">
+                                Сезон {{ season_num }}
+                            </button>
+                            {% endfor %}
+                        </div>
+
+                        {% for season_num, season in anime.seasons.items() %}
+                        <div class="episodes-grid season-{{ season_num }} {% if not loop.first %}hidden{% endif %}">
+                            {% if season.get('episodes') %}
+                            {% for ep_num, episode in season.episodes.items() %}
+                            <div class="episode-card" data-episode="{{ ep_num }}" data-season="{{ season_num }}">
+                                <div class="episode-number">{{ ep_num }}</div>
+                                {% if episode.get('title') %}
+                                <div class="episode-title">{{ episode.title }}</div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <!-- Если нет отдельных эпизодов, показываем ссылку на сезон -->
+                            <div class="season-link">
+                                <button class="nav-btn" onclick="loadSeasonEpisode('{{ season.link }}', '{{ season_num }}', 1)">
+                                    <i class="fas fa-play"></i>
+                                    Смотреть сезон {{ season_num }}
+                                </button>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <!-- Простой список эпизодов -->
+                        <div class="simple-episodes">
+                            {% for i in range(1, (anime.get('episodes_count', 1) + 1)) %}
+                            <button class="episode-btn {% if i == 1 %}active{% endif %}"
+                                    data-episode="{{ i }}"
+                                    onclick="loadSimpleEpisode({{ i }})">
+                                Эпизод {{ i }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Информация об аниме -->
+                <aside class="anime-info-sidebar">
+                    <div class="anime-poster-large">
+                        {% if anime.get('material_data', {}).get('poster_url') %}
+                        <img src="{{ anime.material_data.poster_url }}" alt="{{ anime.title }}">
+                        {% else %}
+                        <div class="poster-placeholder">
+                            <i class="fas fa-image"></i>
+                        </div>
+                        {% endif %}
+
+                        <!-- Статус и рейтинг -->
+                        <div class="anime-stats">
+                            {% if anime.get('material_data', {}).get('shikimori_rating') %}
+                            <div class="rating-box">
+                                <div class="rating-score">{{ anime.material_data.shikimori_rating }}</div>
+                                <div class="rating-label">Рейтинг</div>
+                                <div class="rating-stars">
+                                    {% set rating_value = anime.material_data.shikimori_rating %}
+                                    {% if rating_value %}
+                                    {% set rating_float = rating_value|float if rating_value is not none else 0 %}
+                                    {% set stars = ((rating_float / 2)|round)|int if rating_float > 0 else 0 %}
+                                    {% for i in range(5) %}
+                                    <i class="fas fa-star {% if i < stars %}filled{% endif %}"></i>
+                                    {% endfor %}
+                                    {% else %}
+                                    {% for i in range(5) %}
+                                    <i class="fas fa-star"></i>
+                                    {% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% if anime.get('material_data', {}).get('anime_status') %}
+                            <div class="status-box">
+                                <span class="status-badge {{ anime.material_data.anime_status }}">
+                                    {% if anime.material_data.anime_status == 'released' %}
+                                    Завершён
+                                    {% elif anime.material_data.anime_status == 'ongoing' %}
+                                    Онгоинг
+                                    {% elif anime.material_data.anime_status == 'anons' %}
+                                    Анонс
+                                    {% else %}
+                                    {{ anime.material_data.anime_status }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Основная информация -->
+                    <div class="anime-details">
+                        <h1 class="anime-title">{{ anime.title }}</h1>
+                        {% if anime.get('title_orig') %}
+                        <h2 class="anime-title-orig">{{ anime.title_orig }}</h2>
+                        {% endif %}
+                        {% if anime.get('other_title') %}
+                        <p class="anime-title-alt">{{ anime.other_title }}</p>
+                        {% endif %}
+
+                        <!-- Быстрая информация -->
+                        <div class="quick-info">
+                            {% if anime.year %}
+                            <div class="info-item">
+                                <i class="fas fa-calendar"></i>
+                                <span>{{ anime.year }} год</span>
+                            </div>
+                            {% endif %}
+
+                            {% if anime.get('material_data', {}).get('anime_kind') %}
+                            <div class="info-item">
+                                <i class="fas fa-tv"></i>
+                                <span>{{ anime.material_data.anime_kind|title }}</span>
+                            </div>
+                            {% endif %}
+
+                            {% if anime.get('episodes_count') %}
+                            <div class="info-item">
+                                <i class="fas fa-film"></i>
+                                <span>{{ anime.episodes_count }} эпизодов</span>
+                            </div>
+                            {% endif %}
+
+                            {% if anime.get('translation') %}
+                            <div class="info-item">
+                                <i class="fas fa-volume-up"></i>
+                                <span>{{ anime.translation.title }}</span>
+                                <span class="translation-type">
+                                    ({% if anime.translation.type == 'voice' %}озвучка{% else %}субтитры{% endif %})
+                                </span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Жанры -->
+                        {% if anime.get('material_data', {}).get('anime_genres') %}
+                        <div class="genres-section">
+                            <h4><i class="fas fa-tags"></i> Жанры</h4>
+                            <div class="genres-list">
+                                {% for genre in anime.material_data.anime_genres %}
+                                <a href="/catalog?genre={{ genre }}" class="genre-link">{{ genre }}</a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Описание -->
+                        {% if anime.get('material_data', {}).get('description') %}
+                        <div class="description-section">
+                            <h4><i class="fas fa-align-left"></i> Описание</h4>
+                            <div class="description-text">
+                                {{ anime.material_data.description }}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Действия -->
+                        <div class="anime-actions">
+                            <button class="action-btn favorite" onclick="toggleFavorite()">
+                                <i class="fas fa-heart"></i>
+                                В избранное
+                            </button>
+                            <button class="action-btn watchlist" onclick="addToWatchlist()">
+                                <i class="fas fa-bookmark"></i>
+                                Буду смотреть
+                            </button>
+                            <button class="action-btn share" onclick="shareAnime()">
+                                <i class="fas fa-share"></i>
+                                Поделиться
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+
+            <!-- СИСТЕМА КОММЕНТАРИЕВ -->
+            <section class="comments-section">
+                <!-- Заголовок комментариев -->
+                <div class="comments-header">
+                    <div class="comments-title">
+                        <i class="fas fa-comments"></i>
+                        Комментарии
+                        <span class="comments-count" id="commentsCount">0</span>
+                    </div>
+
+                    <!-- Фильтры комментариев -->
+                    <div class="comments-filters">
+                        <div class="filter-group">
+                            <span class="filter-label">Эпизод:</span>
+                            <select class="filter-select" id="episodeFilter">
+                                <option value="">Все эпизоды</option>
+                                <option value="0">Общие</option>
+                                {% for i in range(1, (anime.get('episodes_count', 1) + 1)) %}
+                                <option value="{{ i }}">Эпизод {{ i }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="filter-group">
+                            <span class="filter-label">Сортировка:</span>
+                            <select class="filter-select" id="sortFilter">
+                                <option value="newest">Новые</option>
+                                <option value="oldest">Старые</option>
+                                <option value="rating">По рейтингу</option>
+                            </select>
+                        </div>
+
+                        <label class="filter-checkbox">
+                            <input type="checkbox" id="spoilerFilter">
+                            <span>Показать спойлеры</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Форма добавления комментария -->
+                {% if current_user %}
+                <div class="comment-form">
+                    <div class="comment-form-header">
+                        <div class="user-avatar">
+                            <div class="avatar-img">
+                                {{ current_user.username[0].upper() }}
+                            </div>
+                            <div class="user-info">{{ current_user.username }}</div>
+                        </div>
+
+                        <div class="comment-options">
+                            <div class="episode-selector">
+                                <span class="filter-label">Эпизод:</span>
+                                <input type="number" class="episode-input" id="commentEpisode"
+                                       min="0" max="{{ anime.get('episodes_count', 1) }}" value="1"
+                                       title="0 = общий комментарий">
+                            </div>
+
+                            <div class="rating-selector">
+                                <span class="filter-label">Оценка:</span>
+                                <div class="rating-stars" id="ratingStars">
+                                    {% for i in range(1, 11) %}
+                                    <i class="fas fa-star rating-star" data-rating="{{ i }}"></i>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <label class="spoiler-toggle" id="spoilerToggle">
+                                <input type="checkbox" id="spoilerCheckbox">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>Спойлер</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <textarea class="comment-textarea" id="commentText"
+                              placeholder="Поделитесь впечатлениями об аниме... (минимум 10 символов)"
+                              maxlength="2000"></textarea>
+
+                    <div class="comment-form-footer">
+                        <div class="char-counter" id="charCounter">0 / 2000</div>
+                        <button class="submit-comment-btn" id="submitComment" disabled>
+                            <i class="fas fa-paper-plane"></i>
+                            Опубликовать
+                        </button>
+                    </div>
+                </div>
+                {% else %}
+                <div class="auth-prompt">
+                    <i class="fas fa-user-lock"></i>
+                    <h3>Войдите, чтобы оставить комментарий</h3>
+                    <p>Делитесь впечатлениями и обсуждайте аниме с другими фанатами</p>
+                    <div class="auth-prompt-buttons">
+                        <a href="{{ url_for('login') }}" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt"></i>
+                            Войти
+                        </a>
+                        <a href="{{ url_for('register') }}" class="btn btn-outline">
+                            <i class="fas fa-user-plus"></i>
+                            Регистрация
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Список комментариев -->
+                <div class="comments-list" id="commentsList">
+                    <div class="no-comments" id="noComments">
+                        <i class="fas fa-comment-slash"></i>
+                        <h3>Комментариев пока нет</h3>
+                        <p>Станьте первым, кто поделится впечатлениями!</p>
+                    </div>
+                </div>
+
+                <!-- Загрузить еще комментарии -->
+                <div class="load-more-comments" id="loadMoreComments" style="display: none;">
+                    <button class="load-more-btn" onclick="loadMoreComments()">
+                        <i class="fas fa-plus"></i>
+                        Загрузить еще комментарии
+                    </button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- В футере добавь секцию с юридическими ссылками -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <!-- Существующие секции -->
+                <!-- НОВАЯ СЕКЦИЯ -->
+                <div class="footer-section">
+                    <h4>Правовая информация</h4>
+                    <ul>
+                        <li><a href="/terms-of-service">Пользовательское соглашение</a></li>
+                        <li><a href="/privacy-policy">Политика конфиденциальности</a></li>
+                        <li><a href="/cookie-policy">Политика Cookies</a></li>
+                        <li><a href="/dmca">DMCA</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2025 Anivest. Все права защищены.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Глобальные переменные
+        let currentEpisode = 1;
+        let currentSeason = 1;
+        let totalEpisodes = {{ anime.get('episodes_count', 1) }};
+        let animeData = {{ anime|tojson }};
+        let currentRating = 0;
+        let comments = [];
+        let commentsLoaded = 0;
+        const commentsPerPage = 20;
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePlayer();
+            initializeComments();
+            loadSavedProgress();
+        });
+
+        // ===== ОСНОВНЫЕ ФУНКЦИИ ПЛЕЕРА (БЕЗ ИЗМЕНЕНИЙ) =====
+
+        function initializePlayer() {
+            const player = document.getElementById('animePlayer');
+
+            if (player) {
+                player.addEventListener('load', function() {
+                    hideLoading();
+                });
+            }
+
+            // Активируем первую серию
+            const firstEpisode = document.querySelector('.episode-card[data-episode="1"], .episode-btn[data-episode="1"]');
+            if (firstEpisode) {
+                firstEpisode.classList.add('active');
+            }
+
+            updateEpisodeInfo();
+            updateNavigationButtons();
+        }
+
+        function showLoading() {
+            document.getElementById('playerLoading').classList.add('show');
+        }
+
+        function hideLoading() {
+            document.getElementById('playerLoading').classList.remove('show');
+        }
+
+        // ===== ПЕРЕКЛЮЧЕНИЕ СЕРИЙ (БЕЗ ИЗМЕНЕНИЙ) =====
+
+        function loadEpisode(episodeLink, episodeNumber, seasonNumber = 1) {
+            console.log('🎬 Попытка загрузки серии:', {
+                episodeLink,
+                episodeNumber,
+                seasonNumber
+            });
+
+            if (!episodeLink) {
+                console.error('❌ Нет ссылки на эпизод');
+                return;
+            }
+
+            showLoading();
+
+            // Обновляем плеер
+            const player = document.getElementById('animePlayer');
+            if (player) {
+                const fullLink = episodeLink.startsWith('//') ? 'https:' + episodeLink : episodeLink;
+
+                console.log('🔄 Меняем src плеера с:', player.src);
+                console.log('🔄 На:', fullLink);
+
+                player.src = fullLink;
+
+                currentEpisode = parseInt(episodeNumber);
+                currentSeason = parseInt(seasonNumber);
+
+                setTimeout(() => {
+                    updateActiveEpisode(episodeNumber, seasonNumber);
+                }, 100);
+
+                updateEpisodeInfo();
+                updateNavigationButtons();
+
+                setTimeout(hideLoading, 2000);
+
+                saveToHistory(episodeNumber, seasonNumber);
+
+                document.querySelector('.player-container').scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+
+                // Обновляем фильтр комментариев
+                document.getElementById('commentEpisode').value = episodeNumber;
+                document.getElementById('episodeFilter').value = episodeNumber;
+                loadComments();
+            }
+        }
+
+        function loadSimpleEpisode(episodeNumber) {
+            console.log('📺 Загрузка простой серии:', episodeNumber);
+
+            const baseLink = animeData.link;
+            if (!baseLink) {
+                console.error('❌ Нет базовой ссылки аниме');
+                return;
+            }
+
+            let episodeLink = null;
+
+            if (baseLink.includes('/1/')) {
+                episodeLink = baseLink.replace(/\/1\//, `/${episodeNumber}/`);
+            } else if (baseLink.includes('?')) {
+                episodeLink = baseLink + `&episode=${episodeNumber}`;
+            } else {
+                episodeLink = baseLink + `?episode=${episodeNumber}`;
+            }
+
+            if (episodeLink) {
+                loadEpisode(episodeLink, episodeNumber, 1);
+            }
+        }
+
+        function loadSeasonEpisode(seasonLink, seasonNumber, episodeNumber) {
+            loadEpisode(seasonLink, episodeNumber, seasonNumber);
+        }
+
+        function updateActiveEpisode(episodeNumber, seasonNumber) {
+            document.querySelectorAll('.episode-card, .episode-btn').forEach(el => {
+                el.classList.remove('active');
+            });
+
+            let currentEpisodeEl = document.querySelector(
+                `.episode-card[data-episode="${episodeNumber}"][data-season="${seasonNumber}"]`
+            );
+
+            if (!currentEpisodeEl) {
+                currentEpisodeEl = document.querySelector(
+                    `.episode-btn[data-episode="${episodeNumber}"]`
+                );
+            }
+
+            if (currentEpisodeEl) {
+                currentEpisodeEl.classList.add('active');
+                currentEpisodeEl.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest',
+                    inline: 'nearest'
+                });
+            }
+        }
+
+        function previousEpisode() {
+            if (currentEpisode > 1) {
+                const newEpisode = currentEpisode - 1;
+                const prevEpisodeCard = document.querySelector(
+                    `.episode-card[data-episode="${newEpisode}"][data-season="${currentSeason}"],
+                     .episode-btn[data-episode="${newEpisode}"]`
+                );
+
+                if (prevEpisodeCard) {
+                    prevEpisodeCard.click();
+                } else {
+                    loadSimpleEpisode(newEpisode);
+                }
+            }
+        }
+
+        function nextEpisode() {
+            if (currentEpisode < totalEpisodes) {
+                const newEpisode = currentEpisode + 1;
+                const nextEpisodeCard = document.querySelector(
+                    `.episode-card[data-episode="${newEpisode}"][data-season="${currentSeason}"],
+                     .episode-btn[data-episode="${newEpisode}"]`
+                );
+
+                if (nextEpisodeCard) {
+                    nextEpisodeCard.click();
+                } else {
+                    const nextSeason = currentSeason + 1;
+                    const nextSeasonEpisode = document.querySelector(
+                        `.episode-card[data-episode="1"][data-season="${nextSeason}"]`
+                    );
+
+                    if (nextSeasonEpisode) {
+                        switchSeason(nextSeason.toString());
+                        setTimeout(() => nextSeasonEpisode.click(), 100);
+                    } else {
+                        loadSimpleEpisode(newEpisode);
+                    }
+                }
+            }
+        }
+
+        function updateNavigationButtons() {
+            const prevBtn = document.getElementById('prevEpisodeBtn');
+            const nextBtn = document.getElementById('nextEpisodeBtn');
+
+            if (prevBtn) prevBtn.disabled = currentEpisode <= 1;
+            if (nextBtn) nextBtn.disabled = currentEpisode >= totalEpisodes;
+        }
+
+        function updateEpisodeInfo() {
+            const episodeInfo = document.getElementById('episodeInfo');
+            if (episodeInfo) {
+                episodeInfo.textContent = `Серия ${currentEpisode}`;
+            }
+        }
+
+        function switchSeason(seasonNumber) {
+            document.querySelectorAll('.season-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            document.querySelectorAll('[class*="episodes-grid season-"]').forEach(grid => {
+                grid.classList.add('hidden');
+            });
+
+            const selectedTab = document.querySelector(`.season-tab[data-season="${seasonNumber}"]`);
+            const selectedGrid = document.querySelector(`.episodes-grid.season-${seasonNumber}`);
+
+            if (selectedTab) selectedTab.classList.add('active');
+            if (selectedGrid) selectedGrid.classList.remove('hidden');
+
+            currentSeason = parseInt(seasonNumber);
+        }
+
+        // Обработчики для карточек серий
+        document.addEventListener('click', function(e) {
+            const episodeCard = e.target.closest('.episode-card');
+            const episodeBtn = e.target.closest('.episode-btn');
+
+            if (episodeCard) {
+                e.preventDefault();
+                const episodeNum = episodeCard.dataset.episode;
+                const seasonNum = episodeCard.dataset.season || '1';
+
+                document.querySelectorAll('.episode-card, .episode-btn').forEach(el => {
+                    el.classList.remove('active');
+                });
+
+                episodeCard.classList.add('active');
+
+                const seasonData = animeData.seasons && animeData.seasons[seasonNum];
+
+                if (seasonData && seasonData.episodes && seasonData.episodes[episodeNum]) {
+                    const episodeLink = seasonData.episodes[episodeNum].link;
+                    loadEpisode(episodeLink, episodeNum, seasonNum);
+                } else {
+                    loadSimpleEpisode(parseInt(episodeNum));
+                }
+            }
+
+            if (episodeBtn) {
+                e.preventDefault();
+                const episodeNum = episodeBtn.dataset.episode;
+
+                document.querySelectorAll('.episode-card, .episode-btn').forEach(el => {
+                    el.classList.remove('active');
+                });
+
+                episodeBtn.classList.add('active');
+                loadSimpleEpisode(parseInt(episodeNum));
+            }
+        });
+
+        function loadSavedProgress() {
+            const saved = localStorage.getItem(`progress_${animeData.id}`);
+            if (saved) {
+                try {
+                    const progressData = JSON.parse(saved);
+                    if (progressData.episode > 1) {
+                        setTimeout(() => {
+                            if (confirm(`Продолжить просмотр с серии ${progressData.episode}?`)) {
+                                currentEpisode = progressData.episode;
+                                currentSeason = progressData.season || 1;
+
+                                const savedEpisode = document.querySelector(
+                                    `.episode-card[data-episode="${progressData.episode}"][data-season="${progressData.season}"],
+                                     .episode-btn[data-episode="${progressData.episode}"]`
+                                );
+                                if (savedEpisode) {
+                                    savedEpisode.click();
+                                } else {
+                                    loadSimpleEpisode(progressData.episode);
+                                }
+                            }
+                        }, 1000);
+                    }
+                } catch (e) {
+                    console.error('Ошибка загрузки прогресса:', e);
+                }
+            }
+        }
+
+        function saveToHistory(episode, season) {
+            let history = JSON.parse(localStorage.getItem('animeHistory') || '[]');
+
+            const historyItem = {
+                animeId: animeData.id,
+                title: animeData.title,
+                episode: episode,
+                season: season,
+                timestamp: Date.now(),
+                poster: animeData.material_data?.poster_url
+            };
+
+            history = history.filter(item => item.animeId !== animeData.id);
+            history.unshift(historyItem);
+            history = history.slice(0, 50);
+
+            localStorage.setItem('animeHistory', JSON.stringify(history));
+
+            const progressData = {
+                animeId: animeData.id,
+                episode: episode,
+                season: season,
+                timestamp: Date.now(),
+                title: animeData.title
+            };
+
+            localStorage.setItem(`progress_${animeData.id}`, JSON.stringify(progressData));
+        }
+
+        // ===== СИСТЕМА КОММЕНТАРИЕВ =====
+
+        function initializeComments() {
+            // Инициализация рейтинга
+            initializeRating();
+
+            // Инициализация формы комментария
+            const commentText = document.getElementById('commentText');
+            const submitBtn = document.getElementById('submitComment');
+            const charCounter = document.getElementById('charCounter');
+
+            if (commentText) {
+                commentText.addEventListener('input', function() {
+                    const length = this.value.length;
+                    charCounter.textContent = `${length} / 2000`;
+
+                    if (length > 1900) {
+                        charCounter.className = 'char-counter error';
+                    } else if (length > 1500) {
+                        charCounter.className = 'char-counter warning';
+                    } else {
+                        charCounter.className = 'char-counter';
+                    }
+
+                    submitBtn.disabled = length < 10 || length > 2000;
+                });
+
+                // Отправка комментария
+                submitBtn.addEventListener('click', submitComment);
+            }
+
+            // Фильтры комментариев
+            const episodeFilter = document.getElementById('episodeFilter');
+            const sortFilter = document.getElementById('sortFilter');
+            const spoilerFilter = document.getElementById('spoilerFilter');
+
+            if (episodeFilter) episodeFilter.addEventListener('change', loadComments);
+            if (sortFilter) sortFilter.addEventListener('change', loadComments);
+            if (spoilerFilter) spoilerFilter.addEventListener('change', loadComments);
+
+            // Загружаем комментарии
+            loadComments();
+        }
+
+        function initializeRating() {
+            const ratingStars = document.querySelectorAll('.rating-star');
+
+            ratingStars.forEach((star, index) => {
+                star.addEventListener('click', function() {
+                    currentRating = index + 1;
+                    updateRatingDisplay();
+                });
+
+                star.addEventListener('mouseenter', function() {
+                    highlightStars(index + 1);
+                });
+            });
+
+            const ratingContainer = document.getElementById('ratingStars');
+            if (ratingContainer) {
+                ratingContainer.addEventListener('mouseleave', function() {
+                    highlightStars(currentRating);
+                });
+            }
+        }
+
+        function highlightStars(rating) {
+            const stars = document.querySelectorAll('.rating-star');
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+        }
+
+        function updateRatingDisplay() {
+            highlightStars(currentRating);
+        }
+
+        async function loadComments() {
+            try {
+                const episode = document.getElementById('episodeFilter')?.value || '';
+                const sort = document.getElementById('sortFilter')?.value || 'newest';
+                const spoilers = document.getElementById('spoilerFilter')?.checked || false;
+
+                const params = new URLSearchParams({
+                    sort: sort,
+                    spoilers: spoilers.toString()
+                });
+
+                if (episode) {
+                    params.append('episode', episode);
+                }
+
+                const response = await fetch(`/api/comments/${animeData.id}?${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    comments = data.comments;
+                    displayComments();
+                    updateCommentsCount();
+                } else {
+                    console.error('Ошибка загрузки комментариев:', data.error);
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки комментариев:', error);
+            }
+        }
+
+        function displayComments() {
+            const commentsList = document.getElementById('commentsList');
+            const noComments = document.getElementById('noComments');
+
+            if (comments.length === 0) {
+                commentsList.innerHTML = '';
+                commentsList.appendChild(noComments);
+                return;
+            }
+
+            noComments.style.display = 'none';
+
+            const commentsHTML = comments.map(comment => `
+                <div class="comment-item" data-comment-id="${comment.id}">
+                    <div class="comment-header">
+                        <div class="comment-author">
+                            <div class="avatar-img">
+                                ${comment.username[0].toUpperCase()}
+                            </div>
+                            <div class="comment-author-info">
+                                <div class="author-name">
+                                    ${comment.username}
+                                    ${comment.role === 'admin' ? '<span class="author-role admin">Admin</span>' : ''}
+                                    ${comment.role === 'moderator' ? '<span class="author-role moderator">Mod</span>' : ''}
+                                </div>
+                                <div class="comment-meta">
+                                    <span class="comment-time">${comment.created_at}</span>
+                                    ${comment.episode_number ? `<span class="episode-badge">Эпизод ${comment.episode_number}</span>` : ''}
+                                    ${comment.rating ? `<span class="comment-rating"><i class="fas fa-star"></i> ${comment.rating}/10</span>` : ''}
+                                    ${comment.is_spoiler ? '<span class="spoiler-badge"><i class="fas fa-exclamation-triangle"></i> Спойлер</span>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="comment-content ${comment.is_spoiler ? 'spoiler' : ''}" ${comment.is_spoiler ? 'data-spoiler="true"' : ''}>
+                        ${comment.is_spoiler ? `
+                            <div class="spoiler-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Этот комментарий содержит спойлеры
+                            </div>
+                            <div class="spoiler-blur" onclick="revealSpoiler(this)">
+                                ${comment.content}
+                                <div class="spoiler-reveal">Нажмите, чтобы показать</div>
+                            </div>
+                        ` : comment.content}
+                    </div>
+
+                    <div class="comment-actions">
+                        <div class="comment-vote">
+                            <button class="vote-btn like" onclick="voteComment(${comment.id}, 'like')">
+                                <i class="fas fa-thumbs-up"></i>
+                                <span>${comment.likes || 0}</span>
+                            </button>
+                            <button class="vote-btn dislike" onclick="voteComment(${comment.id}, 'dislike')">
+                                <i class="fas fa-thumbs-down"></i>
+                                <span>${comment.dislikes || 0}</span>
+                            </button>
+                        </div>
+
+                        {% if current_user %}
+                        ${comment.username === '{{ current_user.username }}' || '{{ current_user.role }}' === 'admin' ? `
+                            <button class="delete-comment" onclick="deleteComment(${comment.id})">
+                                <i class="fas fa-trash"></i> Удалить
+                            </button>
+                        ` : ''}
+                        {% endif %}
+                    </div>
+                </div>
+            `).join('');
+
+            commentsList.innerHTML = commentsHTML;
+        }
+
+        function updateCommentsCount() {
+            const countElement = document.getElementById('commentsCount');
+            if (countElement) {
+                countElement.textContent = comments.length;
+            }
+        }
+
+        async function submitComment() {
+            try {
+                const content = document.getElementById('commentText').value.trim();
+                const episode = parseInt(document.getElementById('commentEpisode').value) || 0;
+                const isSpoiler = document.getElementById('spoilerCheckbox').checked;
+                const rating = currentRating > 0 ? currentRating : null;
+
+                if (content.length < 10) {
+                    alert('Комментарий должен содержать минимум 10 символов');
+                    return;
+                }
+
+                const submitBtn = document.getElementById('submitComment');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Отправка...';
+                submitBtn.disabled = true;
+
+                const response = await fetch('/api/comments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        anime_id: animeData.id,
+                        content: content,
+                        episode_number: episode,
+                        is_spoiler: isSpoiler,
+                        rating: rating
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Очищаем форму
+                    document.getElementById('commentText').value = '';
+                    document.getElementById('charCounter').textContent = '0 / 2000';
+                    document.getElementById('spoilerCheckbox').checked = false;
+                    document.getElementById('spoilerToggle').classList.remove('active');
+                    currentRating = 0;
+                    updateRatingDisplay();
+
+                    // Перезагружаем комментарии
+                    await loadComments();
+
+                    // Уведомление об успехе
+                    showNotification('Комментарий успешно добавлен!', 'success');
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+
+            } catch (error) {
+                console.error('Ошибка отправки комментария:', error);
+                alert('Произошла ошибка при отправке комментария');
+
+                const submitBtn = document.getElementById('submitComment');
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Опубликовать';
+                submitBtn.disabled = false;
+            }
+        }
+
+        async function voteComment(commentId, voteType) {
+            try {
+                const response = await fetch(`/api/comments/${commentId}/vote`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ vote_type: voteType })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Обновляем счетчики голосов
+                    const commentEl = document.querySelector(`[data-comment-id="${commentId}"]`);
+                    if (commentEl) {
+                        const likeBtn = commentEl.querySelector('.vote-btn.like span');
+                        const dislikeBtn = commentEl.querySelector('.vote-btn.dislike span');
+
+                        if (likeBtn) likeBtn.textContent = data.likes;
+                        if (dislikeBtn) dislikeBtn.textContent = data.dislikes;
+                    }
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Ошибка голосования:', error);
+            }
+        }
+
+        async function deleteComment(commentId) {
+            if (!confirm('Вы уверены, что хотите удалить комментарий?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/comments/${commentId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    await loadComments();
+                    showNotification('Комментарий удален', 'info');
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Ошибка удаления комментария:', error);
+                alert('Произошла ошибка при удалении комментария');
+            }
+        }
+
+        function revealSpoiler(element) {
+            element.classList.add('revealed');
+            const reveal = element.querySelector('.spoiler-reveal');
+            if (reveal) {
+                reveal.style.display = 'none';
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            // Простое уведомление (можно заменить на более красивое)
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: var(--${type === 'success' ? 'success' : type === 'error' ? 'error' : 'info'});
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: var(--border-radius);
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Обработчик спойлер чекбокса
+        document.addEventListener('change', function(e) {
+            if (e.target.id === 'spoilerCheckbox') {
+                const toggle = document.getElementById('spoilerToggle');
+                if (e.target.checked) {
+                    toggle.classList.add('active');
+                } else {
+                    toggle.classList.remove('active');
+                }
+            }
+        });
+
+        // ===== ДЕЙСТВИЯ С АНИМЕ (БЕЗ ИЗМЕНЕНИЙ) =====
+
+        function toggleFavorite() {
+            const btn = document.querySelector('.action-btn.favorite');
+
+            if (btn.classList.contains('active')) {
+                btn.classList.remove('active');
+                btn.innerHTML = '<i class="fas fa-heart"></i> В избранное';
+            } else {
+                btn.classList.add('active');
+                btn.innerHTML = '<i class="fas fa-heart"></i> В избранном';
+            }
+        }
+
+        function addToWatchlist() {
+            const btn = document.querySelector('.action-btn.watchlist');
+
+            if (btn.classList.contains('active')) {
+                btn.classList.remove('active');
+                btn.innerHTML = '<i class="fas fa-bookmark"></i> Буду смотреть';
+            } else {
+                btn.classList.add('active');
+                btn.innerHTML = '<i class="fas fa-bookmark"></i> В списке';
+            }
+        }
+
+        function shareAnime() {
+            const shareData = {
+                title: `${animeData.title} - Anivest`,
+                text: `Смотрю аниме "${animeData.title}" на Anivest`,
+                url: window.location.href
+            };
+
+            if (navigator.share) {
+                navigator.share(shareData);
+            } else {
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                    showNotification('Ссылка скопирована в буфер обмена!', 'success');
+                });
+            }
+        }
+    </script>
+</body>
+</html>

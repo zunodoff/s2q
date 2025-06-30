@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Каталог аниме - Anivest</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        /* Дополнительные стили для плавной загрузки */
+        .anime-card {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .load-more-btn.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .load-more-btn.loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            transform: translate(-50%, -50%);
+        }
+
+        @keyframes spin {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .load-more-btn.loading i {
+            opacity: 0;
+        }
+
+        .no-more-content {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Скелетная анимация для загрузки */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-hover) 50%, var(--bg-tertiary) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+        }
+
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-card {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            overflow: hidden;
+        }
+
+        .skeleton-poster {
+            aspect-ratio: 3/4;
+            background: var(--bg-tertiary);
+        }
+
+        .skeleton-info {
+            padding: 1.5rem;
+        }
+
+        .skeleton-title {
+            height: 1.2rem;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+        }
+
+        .skeleton-subtitle {
+            height: 1rem;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            width: 70%;
+            margin-bottom: 1rem;
+        }
+
+        .skeleton-meta {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .skeleton-meta-item {
+            height: 1.5rem;
+            width: 50px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+        }
+
+        .skeleton-description {
+            height: 0.9rem;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+        }
+
+        .skeleton-description:last-child {
+            width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/">
+                    <i class="fas fa-play-circle"></i>
+                    Anivest
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link">Главная</a></li>
+                <li><a href="/catalog" class="nav-link active">Каталог</a></li>
+                <li><a href="/subscription" class="nav-link">Подписка</a></li>
+            </ul>
+            <div class="nav-search">
+                <form action="/catalog" method="GET" class="search-form">
+                    <input type="text" name="q" value="{{ query }}" placeholder="Поиск аниме..." class="search-input">
+                    <button type="submit" class="search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- БЛОК АВТОРИЗАЦИИ -->
+            <div class="nav-user">
+                {% if current_user %}
+                <div class="user-menu">
+                    <div class="user-avatar">
+                        <div class="avatar-img">
+                            {{ current_user.username[0].upper() }}
+                        </div>
+                        <span class="username">{{ current_user.username }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="user-dropdown">
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-user"></i> Профиль
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-heart"></i> Избранное
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-history"></i> История
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-cog"></i> Настройки
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('logout') }}" class="dropdown-item">
+                            <i class="fas fa-sign-out-alt"></i> Выйти
+                        </a>
+                    </div>
+                </div>
+                {% else %}
+                <div class="auth-buttons">
+                    <a href="{{ url_for('login') }}" class="btn btn-outline btn-sm">Войти</a>
+                    <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">Регистрация</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <main class="catalog-main">
+        <div class="container">
+            <div class="catalog-layout">
+                <!-- Боковая панель с фильтрами -->
+                <aside class="filters-sidebar">
+                    <div class="filters-header">
+                        <h3><i class="fas fa-filter"></i> Фильтры</h3>
+                        <button class="filters-reset" onclick="resetFilters()">
+                            <i class="fas fa-undo"></i>
+                            Сбросить
+                        </button>
+                    </div>
+
+                    <form id="filtersForm" method="GET" action="/catalog">
+                        <input type="hidden" name="q" value="{{ query }}">
+                        
+                        <!-- Жанры -->
+                        <div class="filter-group">
+                            <h4>Жанр</h4>
+                            <select name="genre" class="filter-select">
+                                <option value="">Все жанры</option>
+                                <option value="Экшен" {% if filters.genre == 'Экшен' %}selected{% endif %}>Экшен</option>
+                                <option value="Приключения" {% if filters.genre == 'Приключения' %}selected{% endif %}>Приключения</option>
+                                <option value="Комедия" {% if filters.genre == 'Комедия' %}selected{% endif %}>Комедия</option>
+                                <option value="Драма" {% if filters.genre == 'Драма' %}selected{% endif %}>Драма</option>
+                                <option value="Фэнтези" {% if filters.genre == 'Фэнтези' %}selected{% endif %}>Фэнтези</option>
+                                <option value="Романтика" {% if filters.genre == 'Романтика' %}selected{% endif %}>Романтика</option>
+                                <option value="Фантастика" {% if filters.genre == 'Фантастика' %}selected{% endif %}>Фантастика</option>
+                                <option value="Сверхъестественное" {% if filters.genre == 'Сверхъестественное' %}selected{% endif %}>Сверхъестественное</option>
+                                <option value="Психологическое" {% if filters.genre == 'Психологическое' %}selected{% endif %}>Психологическое</option>
+                                <option value="Триллер" {% if filters.genre == 'Триллер' %}selected{% endif %}>Триллер</option>
+                                <option value="Повседневность" {% if filters.genre == 'Повседневность' %}selected{% endif %}>Повседневность</option>
+                                <option value="Школа" {% if filters.genre == 'Школа' %}selected{% endif %}>Школа</option>
+                                <option value="Спорт" {% if filters.genre == 'Спорт' %}selected{% endif %}>Спорт</option>
+                                <option value="Военное" {% if filters.genre == 'Военное' %}selected{% endif %}>Военное</option>
+                                <option value="Исторический" {% if filters.genre == 'Исторический' %}selected{% endif %}>Исторический</option>
+                            </select>
+                        </div>
+
+                        <!-- Тип аниме -->
+                        <div class="filter-group">
+                            <h4>Тип</h4>
+                            <select name="type" class="filter-select">
+                                <option value="">Все типы</option>
+                                <option value="tv" {% if filters.type == 'tv' %}selected{% endif %}>ТВ Сериал</option>
+                                <option value="movie" {% if filters.type == 'movie' %}selected{% endif %}>Фильм</option>
+                                <option value="ova" {% if filters.type == 'ova' %}selected{% endif %}>OVA</option>
+                                <option value="ona" {% if filters.type == 'ona' %}selected{% endif %}>ONA</option>
+                                <option value="special" {% if filters.type == 'special' %}selected{% endif %}>Спецвыпуск</option>
+                            </select>
+                        </div>
+
+                        <!-- Статус -->
+                        <div class="filter-group">
+                            <h4>Статус</h4>
+                            <select name="status" class="filter-select">
+                                <option value="">Все статусы</option>
+                                <option value="released" {% if filters.status == 'released' %}selected{% endif %}>Вышло</option>
+                                <option value="ongoing" {% if filters.status == 'ongoing' %}selected{% endif %}>Выходит</option>
+                                <option value="anons" {% if filters.status == 'anons' %}selected{% endif %}>Анонс</option>
+                            </select>
+                        </div>
+
+                        <!-- Период выхода -->
+                        <div class="filter-group">
+                            <h4>Период выхода</h4>
+                            <div class="year-range-container">
+                                <div class="year-range-labels">
+                                    <span>От:</span>
+                                    <span>До:</span>
+                                </div>
+                                <div class="year-inputs">
+                                    <input type="number" name="year_from" 
+                                           value="{{ filters.year_from or '1990' }}" 
+                                           min="1990" max="2025" 
+                                           class="year-input"
+                                           placeholder="1990">
+                                    <span class="year-separator">—</span>
+                                    <input type="number" name="year_to" 
+                                           value="{{ filters.year_to or '2025' }}" 
+                                           min="1990" max="2025" 
+                                           class="year-input"
+                                           placeholder="2025">
+                                </div>
+                                <div class="range-slider-container">
+                                    <input type="range" id="yearFromSlider" 
+                                           min="1990" max="2025" 
+                                           value="{{ filters.year_from or '1990' }}" 
+                                           class="range-slider range-slider-from">
+                                    <input type="range" id="yearToSlider" 
+                                           min="1990" max="2025" 
+                                           value="{{ filters.year_to or '2025' }}" 
+                                           class="range-slider range-slider-to">
+                                    <div class="range-track"></div>
+                                    <div class="range-fill"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary apply-filters-btn">
+                            <i class="fas fa-check"></i>
+                            Применить фильтры
+                        </button>
+                    </form>
+
+                    <!-- Быстрые фильтры -->
+                    <div class="quick-filters">
+                        <h4>Быстрый выбор</h4>
+                        <div class="quick-filter-buttons">
+                            <a href="/catalog?status=ongoing" class="quick-filter-btn">
+                                <i class="fas fa-clock"></i>
+                                Онгоинги
+                            </a>
+                            <a href="/catalog?type=movie" class="quick-filter-btn">
+                                <i class="fas fa-film"></i>
+                                Фильмы
+                            </a>
+                            <a href="/catalog?year_from=2024&year_to=2025" class="quick-filter-btn">
+                                <i class="fas fa-calendar"></i>
+                                2024-2025
+                            </a>
+                            <a href="/catalog?genre=Экшен" class="quick-filter-btn">
+                                <i class="fas fa-fist-raised"></i>
+                                Экшен
+                            </a>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Основная область с аниме -->
+                <div class="catalog-content">
+                    <!-- Заголовок и сортировка -->
+                    <div class="catalog-header">
+                        <div class="catalog-info">
+                            <h1>
+                                {% if query %}
+                                Результаты поиска: "{{ query }}"
+                                {% else %}
+                                Каталог аниме
+                                {% endif %}
+                            </h1>
+                            {% if anime_list %}
+                            <p class="results-count">Найдено: <span id="totalCount">{{ anime_list|length }}</span> аниме</p>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="view-options">
+                            <button class="view-btn active" data-view="grid">
+                                <i class="fas fa-th"></i>
+                            </button>
+                            <button class="view-btn" data-view="list">
+                                <i class="fas fa-list"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Активные фильтры -->
+                    {% if filters.genre or filters.type or filters.status or filters.year_from or filters.year_to %}
+                    <div class="active-filters">
+                        <span class="filter-label">Активные фильтры:</span>
+                        {% if filters.genre %}
+                        <span class="filter-tag">
+                            Жанр: {{ filters.genre }}
+                            <a href="{{ url_for('catalog', q=query, type=filters.type, status=filters.status, year_from=filters.year_from, year_to=filters.year_to) }}" class="filter-remove">×</a>
+                        </span>
+                        {% endif %}
+                        {% if filters.type %}
+                        <span class="filter-tag">
+                            Тип: {{ filters.type }}
+                            <a href="{{ url_for('catalog', q=query, genre=filters.genre, status=filters.status, year_from=filters.year_from, year_to=filters.year_to) }}" class="filter-remove">×</a>
+                        </span>
+                        {% endif %}
+                        {% if filters.status %}
+                        <span class="filter-tag">
+                            Статус: {{ filters.status }}
+                            <a href="{{ url_for('catalog', q=query, genre=filters.genre, type=filters.type, year_from=filters.year_from, year_to=filters.year_to) }}" class="filter-remove">×</a>
+                        </span>
+                        {% endif %}
+                        {% if filters.year_from or filters.year_to %}
+                        <span class="filter-tag">
+                            Период: {{ filters.year_from or '1990' }}—{{ filters.year_to or '2025' }}
+                            <a href="{{ url_for('catalog', q=query, genre=filters.genre, type=filters.type, status=filters.status) }}" class="filter-remove">×</a>
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Список аниме -->
+                    {% if error %}
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Ошибка загрузки</h3>
+                        <p>{{ error }}</p>
+                        <button onclick="location.reload()" class="btn btn-primary">
+                            <i class="fas fa-redo"></i>
+                            Попробовать снова
+                        </button>
+                    </div>
+                    {% elif not anime_list %}
+                    <div class="no-results">
+                        <i class="fas fa-search"></i>
+                        <h3>Ничего не найдено</h3>
+                        <p>Попробуйте изменить параметры поиска или фильтры</p>
+                        <a href="/catalog" class="btn btn-primary">
+                            <i class="fas fa-home"></i>
+                            Вернуться к каталогу
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="anime-grid" id="animeGrid">
+                        {% for anime in anime_list %}
+                        <div class="anime-card">
+                            <div class="anime-poster">
+                                {% if anime.get('material_data', {}).get('poster_url') %}
+                                <img src="{{ anime.material_data.poster_url }}" alt="{{ anime.title }}" loading="lazy">
+                                {% else %}
+                                <div class="poster-placeholder">
+                                    <i class="fas fa-image"></i>
+                                </div>
+                                {% endif %}
+                                <div class="anime-overlay">
+                                    <a href="/watch/{{ anime.id }}{% if anime.shikimori_id %}?sid={{ anime.shikimori_id }}{% endif %}" class="play-btn">
+                                        <i class="fas fa-play"></i>
+                                    </a>
+                                </div>
+                                
+                                <!-- Статусы и метки -->
+                                <div class="anime-badges">
+                                    {% if anime.get('material_data', {}).get('anime_status') == 'ongoing' %}
+                                    <span class="badge ongoing">Онгоинг</span>
+                                    {% elif anime.get('material_data', {}).get('anime_status') == 'released' %}
+                                    <span class="badge released">Завершён</span>
+                                    {% elif anime.get('material_data', {}).get('anime_status') == 'anons' %}
+                                    <span class="badge anons">Анонс</span>
+                                    {% endif %}
+                                    
+                                    {% if anime.get('translation', {}).get('type') == 'voice' %}
+                                    <span class="badge voice">Озвучка</span>
+                                    {% else %}
+                                    <span class="badge subs">Субтитры</span>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if anime.get('episodes_count') %}
+                                <div class="episode-count">{{ anime.episodes_count }} эп.</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="anime-info">
+                                <h3 class="anime-title">{{ anime.title }}</h3>
+                                {% if anime.get('title_orig') %}
+                                <p class="anime-title-orig">{{ anime.title_orig }}</p>
+                                {% endif %}
+                                
+                                <div class="anime-meta">
+                                    {% if anime.year %}
+                                    <span class="year">{{ anime.year }}</span>
+                                    {% endif %}
+                                    {% if anime.get('material_data', {}).get('anime_kind') %}
+                                    <span class="type">{{ anime.material_data.anime_kind|upper }}</span>
+                                    {% endif %}
+                                    {% if anime.get('material_data', {}).get('shikimori_rating') %}
+                                    <span class="rating">
+                                        <i class="fas fa-star"></i>
+                                        {{ anime.material_data.shikimori_rating }}
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if anime.get('material_data', {}).get('description') %}
+                                <p class="anime-description">
+                                    {{ anime.material_data.description[:150] }}{% if anime.material_data.description|length > 150 %}...{% endif %}
+                                </p>
+                                {% endif %}
+                                
+                                {% if anime.get('material_data', {}).get('anime_genres') %}
+                                <div class="anime-genres">
+                                    {% for genre in anime.material_data.anime_genres[:3] %}
+                                    <span class="genre-tag">{{ genre }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Загрузка еще -->
+                    {% if anime_list and anime_list|length >= 20 %}
+                    <div class="load-more" id="loadMore">
+                        <button class="btn btn-secondary load-more-btn" id="loadMoreBtn">
+                            <i class="fas fa-plus"></i>
+                            <span>Загрузить еще</span>
+                        </button>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </main>
+
+<!-- В футере добавь секцию с юридическими ссылками -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>Правовая информация</h4>
+                <ul>
+                    <li><a href="/terms-of-service">Пользовательское соглашение</a></li>
+                    <li><a href="/privacy-policy">Политика конфиденциальности</a></li>
+                    <li><a href="/cookie-policy">Политика Cookies</a></li>
+                    <li><a href="/dmca">DMCA</a></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>&copy; 2025 Anivest. Все права защищены.</p>
+        </div>
+    </div>
+</footer>
+
+    <script>
+        // Глобальные переменные для пагинации
+        let currentPage = 1;
+        let isLoading = false;
+        let hasMoreContent = true;
+
+        // Получение текущих параметров URL для сохранения фильтров
+        function getCurrentUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return {
+                q: urlParams.get('q') || '',
+                genre: urlParams.get('genre') || '',
+                type: urlParams.get('type') || '',
+                status: urlParams.get('status') || '',
+                year_from: urlParams.get('year_from') || '',
+                year_to: urlParams.get('year_to') || ''
+            };
+        }
+
+        // Создание скелетных карточек для индикации загрузки
+        function createSkeletonCards(count = 8) {
+            const skeletons = [];
+            for (let i = 0; i < count; i++) {
+                skeletons.push(`
+                    <div class="anime-card skeleton-card">
+                        <div class="skeleton-poster skeleton"></div>
+                        <div class="skeleton-info">
+                            <div class="skeleton-title skeleton"></div>
+                            <div class="skeleton-subtitle skeleton"></div>
+                            <div class="skeleton-meta">
+                                <div class="skeleton-meta-item skeleton"></div>
+                                <div class="skeleton-meta-item skeleton"></div>
+                                <div class="skeleton-meta-item skeleton"></div>
+                            </div>
+                            <div class="skeleton-description skeleton"></div>
+                            <div class="skeleton-description skeleton"></div>
+                        </div>
+                    </div>
+                `);
+            }
+            return skeletons.join('');
+        }
+
+        // Обработка ошибок загрузки
+        function handleLoadError(error) {
+            console.error('Ошибка загрузки:', error);
+            
+            // Показываем уведомление об ошибке
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'flash-message error';
+            errorMessage.innerHTML = `
+                <i class="fas fa-exclamation-circle"></i>
+                Ошибка загрузки дополнительного контента. Попробуйте позже.
+            `;
+            errorMessage.style.position = 'fixed';
+            errorMessage.style.top = '20px';
+            errorMessage.style.right = '20px';
+            errorMessage.style.zIndex = '10000';
+            errorMessage.style.maxWidth = '400px';
+            
+            document.body.appendChild(errorMessage);
+            
+            // Удаляем сообщение через 5 секунд
+            setTimeout(() => {
+                errorMessage.remove();
+            }, 5000);
+        }
+
+        // Основная функция загрузки дополнительного контента
+        async function loadMoreContent() {
+            if (isLoading || !hasMoreContent) {
+                return;
+            }
+
+            isLoading = true;
+            const loadMoreBtn = document.getElementById('loadMoreBtn');
+            const animeGrid = document.getElementById('animeGrid');
+            
+            // Показываем индикатор загрузки
+            loadMoreBtn.classList.add('loading');
+            const originalText = loadMoreBtn.innerHTML;
+            loadMoreBtn.innerHTML = '<span>Загружаем...</span>';
+            loadMoreBtn.disabled = true;
+
+            // Добавляем скелетные карточки
+            const skeletonContainer = document.createElement('div');
+            skeletonContainer.innerHTML = createSkeletonCards();
+            skeletonContainer.className = 'skeleton-container';
+            animeGrid.appendChild(skeletonContainer);
+
+            try {
+                // Подготавливаем параметры запроса
+                const params = getCurrentUrlParams();
+                params.page = currentPage + 1;
+                params.ajax = '1'; // Флаг для AJAX запроса
+                
+                const queryString = new URLSearchParams(params).toString();
+                const response = await fetch(`/catalog?${queryString}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Удаляем скелетные карточки
+                skeletonContainer.remove();
+                
+                if (data.anime_list && data.anime_list.length > 0) {
+                    // Добавляем новые карточки аниме
+                    data.anime_list.forEach((anime, index) => {
+                        const animeCard = createAnimeCard(anime);
+                        const cardElement = document.createElement('div');
+                        cardElement.innerHTML = animeCard;
+                        cardElement.firstElementChild.style.animationDelay = `${index * 0.1}s`;
+                        animeGrid.appendChild(cardElement.firstElementChild);
+                    });
+                    
+                    currentPage++;
+                    
+                    // Обновляем счетчик
+                    const totalCount = document.getElementById('totalCount');
+                    if (totalCount) {
+                        const currentCount = parseInt(totalCount.textContent);
+                        totalCount.textContent = currentCount + data.anime_list.length;
+                    }
+                    
+                    // Проверяем, есть ли еще контент
+                    if (data.anime_list.length < 20) {
+                        hasMoreContent = false;
+                        loadMoreBtn.parentElement.innerHTML = `
+                            <div class="no-more-content">
+                                <i class="fas fa-check-circle"></i>
+                                Весь доступный контент загружен
+                            </div>
+                        `;
+                    }
+                } else {
+                    // Нет больше контента
+                    hasMoreContent = false;
+                    loadMoreBtn.parentElement.innerHTML = `
+                        <div class="no-more-content">
+                            <i class="fas fa-info-circle"></i>
+                            Больше аниме не найдено
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Ошибка при загрузке:', error);
+                
+                // Удаляем скелетные карточки
+                skeletonContainer.remove();
+                
+                // Показываем сообщение об ошибке
+                handleLoadError(error);
+                
+                // Возвращаем кнопку в исходное состояние
+                loadMoreBtn.classList.remove('loading');
+                loadMoreBtn.innerHTML = originalText;
+                loadMoreBtn.disabled = false;
+                
+                // Если это сетевая ошибка, предлагаем повторить попытку
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    loadMoreBtn.innerHTML = `
+                        <i class="fas fa-wifi"></i>
+                        <span>Проблема с сетью. Повторить?</span>
+                    `;
+                }
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        // Функция создания HTML карточки аниме
+        function createAnimeCard(anime) {
+            const posterUrl = anime.material_data?.poster_url || '';
+            const title = anime.title || 'Без названия';
+            const titleOrig = anime.title_orig || '';
+            const description = anime.material_data?.description || '';
+            const year = anime.year || '';
+            const animeKind = anime.material_data?.anime_kind || '';
+            const rating = anime.material_data?.shikimori_rating || '';
+            const animeStatus = anime.material_data?.anime_status || '';
+            const translationType = anime.translation?.type || '';
+            const episodesCount = anime.episodes_count || '';
+            const genres = anime.material_data?.anime_genres || [];
+            
+            return `
+                <div class="anime-card">
+                    <div class="anime-poster">
+                        ${posterUrl ? 
+                            `<img src="${posterUrl}" alt="${title}" loading="lazy">` :
+                            `<div class="poster-placeholder"><i class="fas fa-image"></i></div>`
+                        }
+                        <div class="anime-overlay">
+                            <a href="/watch/${anime.id}${anime.shikimori_id ? '?sid=' + anime.shikimori_id : ''}" class="play-btn">
+                                <i class="fas fa-play"></i>
+                            </a>
+                        </div>
+                        
+                        <div class="anime-badges">
+                            ${animeStatus === 'ongoing' ? '<span class="badge ongoing">Онгоинг</span>' : ''}
+                            ${animeStatus === 'released' ? '<span class="badge released">Завершён</span>' : ''}
+                            ${animeStatus === 'anons' ? '<span class="badge anons">Анонс</span>' : ''}
+                            ${translationType === 'voice' ? 
+                                '<span class="badge voice">Озвучка</span>' : 
+                                '<span class="badge subs">Субтитры</span>'
+                            }
+                        </div>
+                        
+                        ${episodesCount ? `<div class="episode-count">${episodesCount} эп.</div>` : ''}
+                    </div>
+                    
+                    <div class="anime-info">
+                        <h3 class="anime-title">${title}</h3>
+                        ${titleOrig ? `<p class="anime-title-orig">${titleOrig}</p>` : ''}
+                        
+                        <div class="anime-meta">
+                            ${year ? `<span class="year">${year}</span>` : ''}
+                            ${animeKind ? `<span class="type">${animeKind.toUpperCase()}</span>` : ''}
+                            ${rating ? `<span class="rating"><i class="fas fa-star"></i> ${rating}</span>` : ''}
+                        </div>
+                        
+                        ${description ? `
+                            <p class="anime-description">
+                                ${description.length > 150 ? description.substring(0, 150) + '...' : description}
+                            </p>
+                        ` : ''}
+                        
+                        ${genres.length > 0 ? `
+                            <div class="anime-genres">
+                                ${genres.slice(0, 3).map(genre => `<span class="genre-tag">${genre}</span>`).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Обработчик кнопки "Загрузить еще"
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadMoreBtn = document.getElementById('loadMoreBtn');
+            if (loadMoreBtn) {
+                loadMoreBtn.addEventListener('click', loadMoreContent);
+            }
+        });
+
+        // Переключение вида отображения
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                const grid = document.getElementById('animeGrid');
+                const view = this.dataset.view;
+                
+                grid.className = view === 'list' ? 'anime-list' : 'anime-grid';
+            });
+        });
+
+        // Сброс фильтров
+        function resetFilters() {
+            currentPage = 1;
+            hasMoreContent = true;
+            window.location.href = '/catalog';
+        }
+
+        // Автоматическое применение фильтров
+        document.querySelectorAll('.filter-select').forEach(select => {
+            select.addEventListener('change', function() {
+                currentPage = 1;
+                hasMoreContent = true;
+                document.getElementById('filtersForm').submit();
+            });
+        });
+
+        // Живой поиск
+        let searchTimeout;
+        const searchInput = document.querySelector('.search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    if (this.value.length >= 2 || this.value.length === 0) {
+                        currentPage = 1;
+                        hasMoreContent = true;
+                        document.querySelector('.search-form').submit();
+                    }
+                }, 500);
+            });
+        }
+
+        // Ленивая загрузка изображений с обработкой ошибок
+        const observeImages = () => {
+            const images = document.querySelectorAll('img[loading="lazy"]:not([data-observed])');
+            const imageObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        img.dataset.observed = 'true';
+                        observer.unobserve(img);
+                    }
+                });
+            });
+
+            images.forEach(img => {
+                imageObserver.observe(img);
+                
+                // Обработка ошибок загрузки изображений
+                img.addEventListener('error', function() {
+                    console.log('Ошибка загрузки изображения:', this.src);
+                    this.style.display = 'none';
+                    
+                    // Показываем placeholder
+                    const placeholder = this.parentElement.querySelector('.poster-placeholder');
+                    if (placeholder) {
+                        placeholder.style.display = 'flex';
+                    }
+                });
+                
+                img.addEventListener('load', function() {
+                    // Скрываем placeholder если изображение загрузилось
+                    const placeholder = this.parentElement.querySelector('.poster-placeholder');
+                    if (placeholder) {
+                        placeholder.style.display = 'none';
+                    }
+                });
+            });
+        };
+
+        // Наблюдаем за новыми изображениями при добавлении контента
+        const animeGrid = document.getElementById('animeGrid');
+        if (animeGrid) {
+            const gridObserver = new MutationObserver(observeImages);
+            gridObserver.observe(animeGrid, { childList: true });
+        }
+
+        // Инициализация наблюдения за изображениями
+        observeImages();
+
+        // ===== ПОЛЗУНОК ДИАПАЗОНА ЛЕТ =====
+        const yearFromSlider = document.getElementById('yearFromSlider');
+        const yearToSlider = document.getElementById('yearToSlider');
+        const yearFromInput = document.querySelector('input[name="year_from"]');
+        const yearToInput = document.querySelector('input[name="year_to"]');
+        const rangeFill = document.querySelector('.range-fill');
+
+        function updateRangeFill() {
+            const fromValue = parseInt(yearFromSlider.value);
+            const toValue = parseInt(yearToSlider.value);
+            const min = parseInt(yearFromSlider.min);
+            const max = parseInt(yearFromSlider.max);
+            
+            const fromPercent = (fromValue - min) / (max - min) * 100;
+            const toPercent = (toValue - min) / (max - min) * 100;
+            
+            rangeFill.style.left = fromPercent + '%';
+            rangeFill.style.width = (toPercent - fromPercent) + '%';
+        }
+
+        function syncSliderWithInput() {
+            let fromValue = parseInt(yearFromSlider.value);
+            let toValue = parseInt(yearToSlider.value);
+            
+            // Убеждаемся что fromValue <= toValue
+            if (fromValue > toValue) {
+                if (event.target === yearFromSlider) {
+                    toValue = fromValue;
+                    yearToSlider.value = toValue;
+                    yearToInput.value = toValue;
+                } else {
+                    fromValue = toValue;
+                    yearFromSlider.value = fromValue;
+                    yearFromInput.value = fromValue;
+                }
+            }
+            
+            yearFromInput.value = fromValue;
+            yearToInput.value = toValue;
+            updateRangeFill();
+        }
+
+        function syncInputWithSlider() {
+            let fromValue = parseInt(yearFromInput.value) || 1990;
+            let toValue = parseInt(yearToInput.value) || 2025;
+            
+            // Ограничиваем значения
+            fromValue = Math.max(1990, Math.min(2025, fromValue));
+            toValue = Math.max(1990, Math.min(2025, toValue));
+            
+            // Убеждаемся что fromValue <= toValue
+            if (fromValue > toValue) {
+                if (event.target === yearFromInput) {
+                    toValue = fromValue;
+                    yearToInput.value = toValue;
+                } else {
+                    fromValue = toValue;
+                    yearFromInput.value = fromValue;
+                }
+            }
+            
+            yearFromSlider.value = fromValue;
+            yearToSlider.value = toValue;
+            yearFromInput.value = fromValue;
+            yearToInput.value = toValue;
+            updateRangeFill();
+        }
+
+        // Функция валидации ввода года
+        function validateYearInput(input) {
+            let value = parseInt(input.value);
+            if (isNaN(value) || value < 1990) {
+                input.value = 1990;
+            } else if (value > 2025) {
+                input.value = 2025;
+            }
+        }
+
+        // События для ползунков
+        if (yearFromSlider && yearToSlider) {
+            yearFromSlider.addEventListener('input', syncSliderWithInput);
+            yearToSlider.addEventListener('input', syncSliderWithInput);
+            
+            // События для инпутов
+            yearFromInput.addEventListener('input', syncInputWithSlider);
+            yearToInput.addEventListener('input', syncInputWithSlider);
+            
+            // Валидация при потере фокуса
+            yearFromInput.addEventListener('blur', function() {
+                validateYearInput(this);
+                syncInputWithSlider();
+            });
+            
+            yearToInput.addEventListener('blur', function() {
+                validateYearInput(this);
+                syncInputWithSlider();
+            });
+            
+            // Автоматическое применение фильтра при изменении диапазона
+            yearFromInput.addEventListener('change', function() {
+                validateYearInput(this);
+                currentPage = 1;
+                hasMoreContent = true;
+                setTimeout(() => {
+                    document.getElementById('filtersForm').submit();
+                }, 300);
+            });
+            
+            yearToInput.addEventListener('change', function() {
+                validateYearInput(this);
+                currentPage = 1;
+                hasMoreContent = true;
+                setTimeout(() => {
+                    document.getElementById('filtersForm').submit();
+                }, 300);
+            });
+            
+            // Инициализация
+            updateRangeFill();
+        }
+
+        // Бесконечная прокрутка (опционально)
+        let infiniteScrollEnabled = false; // Можно включить при необходимости
+        
+        if (infiniteScrollEnabled) {
+            let scrollTimeout;
+            window.addEventListener('scroll', function() {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 1000) {
+                        if (hasMoreContent && !isLoading) {
+                            loadMoreContent();
+                        }
+                    }
+                }, 100);
+            });
+        }
+    </script>
+</body>
+</html>

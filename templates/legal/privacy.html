@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Политика конфиденциальности - Anivest</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/">
+                    <i class="fas fa-play-circle"></i>
+                    Anivest
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link">Главная</a></li>
+                <li><a href="/catalog" class="nav-link">Каталог</a></li>
+                <li><a href="/subscription" class="nav-link">Подписка</a></li>
+            </ul>
+            <div class="nav-search">
+                <form action="/catalog" method="GET" class="search-form">
+                    <input type="text" name="q" placeholder="Поиск аниме..." class="search-input">
+                    <button type="submit" class="search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- БЛОК АВТОРИЗАЦИИ -->
+            <div class="nav-user">
+                {% if current_user %}
+                <div class="user-menu">
+                    <div class="user-avatar">
+                        <div class="avatar-img">
+                            {{ current_user.username[0].upper() }}
+                        </div>
+                        <span class="username">{{ current_user.username }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="user-dropdown">
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-user"></i> Профиль
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-heart"></i> Избранное
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-history"></i> История
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-cog"></i> Настройки
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('logout') }}" class="dropdown-item">
+                            <i class="fas fa-sign-out-alt"></i> Выйти
+                        </a>
+                    </div>
+                </div>
+                {% else %}
+                <div class="auth-buttons">
+                    <a href="{{ url_for('login') }}" class="btn btn-outline btn-sm">Войти</a>
+                    <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">Регистрация</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <main class="legal-main">
+        <div class="container">
+            <!-- Хлебные крошки -->
+            <nav class="breadcrumbs">
+                <a href="/"><i class="fas fa-home"></i> Главная</a>
+                <span class="separator">→</span>
+                <span class="current">Политика конфиденциальности</span>
+            </nav>
+
+            <div class="legal-content">
+                <h1><i class="fas fa-user-shield"></i> Политика конфиденциальности</h1>
+                <p class="last-updated">
+                    <i class="fas fa-calendar-alt"></i>
+                    Последнее обновление: 30 июня 2025 года
+                </p>
+
+                <!-- Важное уведомление -->
+                <div class="privacy-notice">
+                    <i class="fas fa-shield-alt"></i>
+                    <div>
+                        <h3>Защита ваших данных</h3>
+                        <p>Мы используем анонимную систему пересылки писем для обработки запросов, чтобы обеспечить конфиденциальность. Мы серьезно относимся к защите ваших персональных данных и соблюдаем требования GDPR и российского законодательства.</p>
+                    </div>
+                </div>
+
+                <!-- Навигация по документу -->
+                <div class="document-nav">
+                    <h4><i class="fas fa-list"></i> Быстрая навигация:</h4>
+                    <div class="nav-grid">
+                        <a href="#section-2" class="nav-item">
+                            <i class="fas fa-database"></i>
+                            <span>Какие данные собираем</span>
+                        </a>
+                        <a href="#section-3" class="nav-item">
+                            <i class="fas fa-cogs"></i>
+                            <span>Как используем</span>
+                        </a>
+                        <a href="#section-9" class="nav-item">
+                            <i class="fas fa-user-check"></i>
+                            <span>Ваши права</span>
+                        </a>
+                        <a href="#section-13" class="nav-item">
+                            <i class="fas fa-envelope"></i>
+                            <span>Контакты</span>
+                        </a>
+                    </div>
+                </div>
+
+                <section id="section-1">
+                    <h2><i class="fas fa-info-circle"></i> 1. Общие положения</h2>
+                    <p>Настоящая Политика конфиденциальности описывает, как администрацией сайта Anivest.com (далее — «Мы», «Сервис») собирает, использует и защищает информацию пользователей сайта Anivest.com.</p>
+                </section>
+
+                <section id="section-2">
+                    <h2><i class="fas fa-database"></i> 2. Какую информацию мы собираем</h2>
+
+                    <div class="data-collection-grid">
+                        <div class="data-category">
+                            <div class="category-header">
+                                <i class="fas fa-user-edit"></i>
+                                <h3>2.1. Информация, которую вы предоставляете</h3>
+                            </div>
+                            <div class="data-items">
+                                <div class="data-item">
+                                    <i class="fas fa-user-plus"></i>
+                                    <div>
+                                        <strong>При регистрации:</strong>
+                                        <span>имя пользователя, email, пароль</span>
+                                    </div>
+                                </div>
+                                <div class="data-item">
+                                    <i class="fas fa-credit-card"></i>
+                                    <div>
+                                        <strong>При оплате:</strong>
+                                        <span>платежная информация (обрабатывается платежными системами)</span>
+                                    </div>
+                                </div>
+                                <div class="data-item">
+                                    <i class="fas fa-comments"></i>
+                                    <div>
+                                        <strong>При использовании:</strong>
+                                        <span>комментарии, рейтинги, списки аниме</span>
+                                    </div>
+                                </div>
+                                <div class="data-item">
+                                    <i class="fas fa-headset"></i>
+                                    <div>
+                                        <strong>При обращении в поддержку:</strong>
+                                        <span>сообщения и файлы</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="data-category">
+                            <div class="category-header">
+                                <i class="fas fa-robot"></i>
+                                <h3>2.2. Информация, собираемая автоматически</h3>
+                            </div>
+                            <div class="data-items">
+                                <div class="data-item">
+                                    <i class="fas fa-laptop"></i>
+                                    <div>
+                                        <strong>Технические данные:</strong>
+                                        <span>IP-адрес, тип устройства, браузер, ОС</span>
+                                    </div>
+                                </div>
+                                <div class="data-item">
+                                    <i class="fas fa-chart-line"></i>
+                                    <div>
+                                        <strong>Данные об использовании:</strong>
+                                        <span>просмотренные страницы, время посещения</span>
+                                    </div>
+                                </div>
+                                <div class="data-item">
+                                    <i class="fas fa-cookie-bite"></i>
+                                    <div>
+                                        <strong>Cookies:</strong>
+                                        <span>см. нашу <a href="/cookie-policy">Cookie Policy</a></span>
+                                    </div>
+                                </div>
+                                <div class="data-item">
+                                    <i class="fas fa-play"></i>
+                                    <div>
+                                        <strong>Данные о просмотрах:</strong>
+                                        <span>какие аниме смотрите, прогресс просмотра</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="section-9">
+                    <h2><i class="fas fa-user-check"></i> 9. Ваши права</h2>
+                    <p class="rights-intro">В соответствии с GDPR и российским законодательством вы имеете следующие права:</p>
+
+                    <div class="rights-grid">
+                        <div class="right-item">
+                            <div class="right-icon">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <div class="right-content">
+                                <h4>Доступ</h4>
+                                <p>Получить копию ваших персональных данных</p>
+                            </div>
+                        </div>
+
+                        <div class="right-item">
+                            <div class="right-icon">
+                                <i class="fas fa-edit"></i>
+                            </div>
+                            <div class="right-content">
+                                <h4>Исправление</h4>
+                                <p>Исправить неточные или неполные данные</p>
+                            </div>
+                        </div>
+
+                        <div class="right-item">
+                            <div class="right-icon">
+                                <i class="fas fa-trash"></i>
+                            </div>
+                            <div class="right-content">
+                                <h4>Удаление</h4>
+                                <p>Удалить ваши данные при определенных условиях</p>
+                            </div>
+                        </div>
+
+                        <div class="right-item">
+                            <div class="right-icon">
+                                <i class="fas fa-pause"></i>
+                            </div>
+                            <div class="right-content">
+                                <h4>Ограничение</h4>
+                                <p>Ограничить обработку в определенных случаях</p>
+                            </div>
+                        </div>
+
+                        <div class="right-item">
+                            <div class="right-icon">
+                                <i class="fas fa-download"></i>
+                            </div>
+                            <div class="right-content">
+                                <h4>Портируемость</h4>
+                                <p>Получить данные в структурированном формате</p>
+                            </div>
+                        </div>
+
+                        <div class="right-item">
+                            <div class="right-icon">
+                                <i class="fas fa-times-circle"></i>
+                            </div>
+                            <div class="right-content">
+                                <h4>Возражение</h4>
+                                <p>Возразить против обработки на основе законных интересов</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rights-contact">
+                        <i class="fas fa-envelope"></i>
+                        <div>
+                            <strong>Для реализации прав обращайтесь:</strong>
+                            <a href="mailto:[email protected]">[email protected]</a>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="section-13">
+                    <h2><i class="fas fa-envelope"></i> 13. Контакты</h2>
+                    <div class="contact-grid">
+                        <div class="contact-card">
+                            <i class="fas fa-envelope"></i>
+                            <h4>Общие вопросы</h4>
+                            <a href="mailto:[email protected]">[email protected]</a>
+                            <p>Письма пересылаются на защищённый адрес через анонимную систему пересылки.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Подпись документа -->
+                <div class="signature">
+                    <div class="signature-line"></div>
+                    <p><strong>Администрация Anivest.com</strong></p>
+                    <p>Дата: 30 июня 2025 года</p>
+                </div>
+
+                <!-- Связанные документы -->
+                <div class="related-documents">
+                    <h3><i class="fas fa-file-alt"></i> Связанные документы</h3>
+                    <div class="doc-links">
+                        <a href="/terms-of-service" class="doc-link">
+                            <i class="fas fa-file-contract"></i>
+                            <span>Пользовательское соглашение</span>
+                        </a>
+                        <a href="/cookie-policy" class="doc-link">
+                            <i class="fas fa-cookie-bite"></i>
+                            <span>Политика Cookies</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Футер -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <i class="fas fa-play-circle"></i>
+                        Anivest
+                    </div>
+                    <p>Ваш портал в мир аниме</p>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Правовая информация</h4>
+                    <ul>
+                        <li><a href="/terms-of-service">Пользовательское соглашение</a></li>
+                        <li><a href="/privacy-policy">Политика конфиденциальности</a></li>
+                        <li><a href="/cookie-policy">Политика Cookies</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2025 Anivest. Все права защищены.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

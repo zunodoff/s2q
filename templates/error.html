@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ошибка - Anivest</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/">
+                    <i class="fas fa-play-circle"></i>
+                    Anivest
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link">Главная</a></li>
+                <li><a href="/catalog" class="nav-link">Каталог</a></li>
+                <li><a href="/subscription" class="nav-link">Подписка</a></li>
+            </ul>
+            <div class="nav-search">
+                <form action="/catalog" method="GET" class="search-form">
+                    <input type="text" name="q" placeholder="Поиск аниме..." class="search-input">
+                    <button type="submit" class="search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <main class="error-main">
+        <div class="container">
+            <div class="error-content">
+                <div class="error-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                
+                <h1 class="error-title">Упс! Что-то пошло не так</h1>
+                
+                <div class="error-message">
+                    <p>{{ message or "Произошла неожиданная ошибка. Пожалуйста, попробуйте позже." }}</p>
+                </div>
+                
+                <div class="error-actions">
+                    <a href="/" class="btn btn-primary">
+                        <i class="fas fa-home"></i>
+                        Вернуться на главную
+                    </a>
+                    <a href="/catalog" class="btn btn-secondary">
+                        <i class="fas fa-search"></i>
+                        Перейти к каталогу
+                    </a>
+                    <button onclick="history.back()" class="btn btn-outline">
+                        <i class="fas fa-arrow-left"></i>
+                        Назад
+                    </button>
+                </div>
+                
+                <div class="error-help">
+                    <p>Если проблема повторяется, попробуйте:</p>
+                    <ul>
+                        <li>Обновить страницу</li>
+                        <li>Очистить кеш браузера</li>
+                        <li>Проверить интернет-соединение</li>
+                        <li>Обратиться в поддержку</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Футер -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2025 Anivest. Все права защищены.</p>
+            </div>
+        </div>
+    </footer>
+
+    <style>
+        .error-main {
+            min-height: 80vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 0;
+        }
+
+        .error-content {
+            text-align: center;
+            max-width: 600px;
+            padding: 3rem;
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .error-icon {
+            font-size: 6rem;
+            color: var(--error);
+            margin-bottom: 2rem;
+        }
+
+        .error-title {
+            font-size: 2.5rem;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+        }
+
+        .error-message {
+            margin-bottom: 2.5rem;
+        }
+
+        .error-message p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .error-actions {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 3rem;
+            flex-wrap: wrap;
+        }
+
+        .error-help {
+            text-align: left;
+            background: var(--bg-tertiary);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .error-help p {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .error-help ul {
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        .error-help li {
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .error-content {
+                margin: 1rem;
+                padding: 2rem;
+            }
+
+            .error-title {
+                font-size: 2rem;
+            }
+
+            .error-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</body>
+</html>

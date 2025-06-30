@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anivest - Современный портал аниме</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        /* Улучшенные стили главной страницы */
+        .hero {
+            position: relative;
+            min-height: 80vh;
+            background: linear-gradient(
+                rgba(15, 15, 35, 0.7),
+                rgba(15, 15, 35, 0.8)
+            ), url("{{ url_for('static', filename='images/hero-bg.jpg') }}") center/cover no-repeat;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
+            animation: bgAnimation 20s ease-in-out infinite;
+        }
+
+        @keyframes bgAnimation {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            max-width: 900px;
+            padding: 2rem;
+        }
+
+        .hero-title {
+            font-size: 4rem;
+            font-weight: 900;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #FFFFFF 0%, #8B5CF6 50%, #EC4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.1;
+            text-shadow: 0 0 50px rgba(139, 92, 246, 0.5);
+        }
+
+        .hero-subtitle {
+            font-size: 1.4rem;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 2.5rem;
+            line-height: 1.6;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .hero-stat {
+            text-align: center;
+            color: white;
+        }
+
+        .hero-stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: block;
+        }
+
+        .hero-stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Секции контента */
+        .content-section {
+            padding: 4rem 0;
+            position: relative;
+        }
+
+        .content-section:nth-child(even) {
+            background: var(--bg-secondary);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .section-title {
+            font-size: 2.2rem;
+            color: var(--text-primary);
+            font-weight: 700;
+            position: relative;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 60px;
+            height: 4px;
+            background: var(--gradient-primary);
+            border-radius: 2px;
+        }
+
+        .section-subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Улучшенная сетка аниме */
+        .anime-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .anime-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            position: relative;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.1);
+        }
+
+        .anime-card:hover {
+            transform: translateY(-15px) scale(1.03);
+            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.3);
+            border-color: var(--primary);
+        }
+
+        .anime-poster {
+            position: relative;
+            aspect-ratio: 3/4;
+            overflow: hidden;
+        }
+
+        .anime-poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.6s ease;
+        }
+
+        .anime-card:hover .anime-poster img {
+            transform: scale(1.1);
+        }
+
+        .anime-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                45deg,
+                rgba(139, 92, 246, 0.9) 0%,
+                rgba(236, 72, 153, 0.9) 100%
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .anime-card:hover .anime-overlay {
+            opacity: 1;
+        }
+
+        .play-btn {
+            width: 70px;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.8rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .play-btn:hover {
+            transform: scale(1.2);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .anime-rating {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--warning);
+            padding: 0.5rem 0.75rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .anime-episode-count {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(139, 92, 246, 0.9);
+            color: white;
+            padding: 0.4rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .anime-info {
+            padding: 2rem;
+        }
+
+        .anime-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .anime-meta {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .anime-meta span {
+            font-size: 0.85rem;
+            padding: 0.3rem 0.8rem;
+            background: var(--bg-tertiary);
+            border-radius: 15px;
+            color: var(--text-secondary);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .anime-description {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .anime-genres {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .genre-tag {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.6rem;
+            background: rgba(139, 92, 246, 0.15);
+            color: var(--primary-light);
+            border-radius: 12px;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .genre-tag:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Trending секция */
+        .trending-section {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .trending-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -50%;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(
+                45deg,
+                transparent 30%,
+                rgba(139, 92, 246, 0.05) 50%,
+                transparent 70%
+            );
+            animation: shimmer 8s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-50%); }
+            100% { transform: translateX(50%); }
+        }
+
+        /* Топ аниме */
+        .top-anime-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .top-anime-card {
+            background: var(--bg-card);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            transition: all 0.3s ease;
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .top-anime-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(139, 92, 246, 0.2);
+            border-color: var(--primary);
+        }
+
+        .top-anime-rank {
+            font-size: 2rem;
+            font-weight: 900;
+            color: var(--primary);
+            min-width: 50px;
+        }
+
+        .top-anime-poster {
+            width: 80px;
+            height: 120px;
+            border-radius: 8px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .top-anime-poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .top-anime-info h3 {
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .top-anime-info p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        /* Быстрые ссылки */
+        .quick-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .quick-link {
+            background: var(--bg-card);
+            padding: 2rem;
+            border-radius: 20px;
+            text-align: center;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        .quick-link:hover {
+            transform: translateY(-10px);
+            border-color: var(--primary);
+            box-shadow: 0 15px 30px rgba(139, 92, 246, 0.2);
+        }
+
+        .quick-link-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .quick-link h3 {
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .quick-link p {
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1.1rem;
+            }
+
+            .hero-stats {
+                gap: 2rem;
+            }
+
+            .anime-grid {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                gap: 1.5rem;
+            }
+
+            .section-title {
+                font-size: 1.8rem;
+            }
+
+            .top-anime-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .top-anime-card {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+
+            .anime-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 1rem;
+            }
+
+            .quick-links {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/">
+                    <i class="fas fa-play-circle"></i>
+                    Anivest
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link active">Главная</a></li>
+                <li><a href="/catalog" class="nav-link">Каталог</a></li>
+                <li><a href="/subscription" class="nav-link">Подписка</a></li>
+            </ul>
+            <div class="nav-search">
+                <form action="/catalog" method="GET" class="search-form">
+                    <input type="text" name="q" placeholder="Поиск аниме..." class="search-input">
+                    <button type="submit" class="search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- БЛОК АВТОРИЗАЦИИ -->
+            <div class="nav-user">
+                {% if current_user %}
+                <div class="user-menu">
+                    <div class="user-avatar">
+                        <div class="avatar-img">
+                            {{ current_user.username[0].upper() }}
+                        </div>
+                        <span class="username">{{ current_user.username }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="user-dropdown">
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-user"></i> Профиль
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-heart"></i> Избранное
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-history"></i> История
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-cog"></i> Настройки
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('logout') }}" class="dropdown-item">
+                            <i class="fas fa-sign-out-alt"></i> Выйти
+                        </a>
+                    </div>
+                </div>
+                {% else %}
+                <div class="auth-buttons">
+                    <a href="{{ url_for('login') }}" class="btn btn-outline btn-sm">Войти</a>
+                    <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">Регистрация</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Главный контент -->
+    <main class="main-content">
+        <!-- Герой секция -->
+        <section class="hero">
+            <div class="container">
+                <div class="hero-content">
+                    <h1 class="hero-title">Добро пожаловать в Anivest</h1>
+                    <p class="hero-subtitle">
+                        Ваш портал в мир аниме! Смотрите тысячи титулов в высоком качестве,
+                        следите за новинками сезона и наслаждайтесь любимыми сериалами без рекламы
+                    </p>
+
+                    <div class="hero-stats">
+                        <div class="hero-stat">
+                            <span class="hero-stat-number">15,000+</span>
+                            <span class="hero-stat-label">Аниме тайтлов</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-number">850+</span>
+                            <span class="hero-stat-label">Новых серий</span>
+                        </div>
+                        <div class="hero-stat">
+                            <span class="hero-stat-number">24/7</span>
+                            <span class="hero-stat-label">Доступность</span>
+                        </div>
+                    </div>
+
+                    <div class="hero-buttons">
+                        <a href="/catalog" class="btn btn-primary btn-large">
+                            <i class="fas fa-play"></i>
+                            Начать просмотр
+                        </a>
+                        <a href="/subscription" class="btn btn-outline btn-large">
+                            <i class="fas fa-crown"></i>
+                            Премиум доступ
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Топ популярных аниме текущего сезона -->
+        <section class="content-section trending-section">
+            <div class="container">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">{{ season_emoji }} Топ популярных аниме {{ season_name_ru }} сезона {{ current_year }}</h2>
+                        <p class="section-subtitle">Самые популярные и высокорейтинговые аниме этого сезона с наибольшим количеством просмотров</p>
+                    </div>
+                    <a href="/catalog?season={{ current_season }}&year={{ current_year }}" class="view-all-btn">
+                        Все аниме сезона <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+
+                {% if error %}
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Ошибка загрузки: {{ error }}</p>
+                </div>
+                {% else %}
+                <div class="anime-grid">
+                    {% for anime in seasonal_anime %}
+                    <div class="anime-card">
+                        <div class="anime-poster">
+                            <!-- Добавляем индикатор популярности для топ-3 -->
+                            {% if loop.index <= 3 %}
+                            <div class="popularity-badge top-{{ loop.index }}">
+                                <i class="fas fa-crown"></i>
+                                ТОП-{{ loop.index }}
+                            </div>
+                            {% endif %}
+
+                            {% if anime.get('material_data', {}).get('poster_url') %}
+                            <img src="{{ anime.material_data.poster_url }}" alt="{{ anime.title }}" loading="lazy">
+                            {% else %}
+                            <div class="poster-placeholder">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            {% endif %}
+
+                            <div class="anime-overlay">
+                                <a href="/watch/{{ anime.id }}{% if anime.shikimori_id %}?sid={{ anime.shikimori_id }}{% endif %}" class="play-btn">
+                                    <i class="fas fa-play"></i>
+                                </a>
+                            </div>
+
+                            {% if anime.get('material_data', {}).get('shikimori_rating') %}
+                            <div class="anime-rating">
+                                <i class="fas fa-star"></i>
+                                {{ anime.material_data.shikimori_rating }}
+                            </div>
+                            {% endif %}
+
+                            <!-- Показываем количество оценок для популярности -->
+                            {% if anime.get('material_data', {}).get('shikimori_votes') %}
+                            <div class="anime-votes">
+                                <i class="fas fa-users"></i>
+                                {{ anime.material_data.shikimori_votes }}
+                            </div>
+                            {% endif %}
+
+                            {% if anime.get('episodes_count') %}
+                            <div class="anime-episode-count">{{ anime.episodes_count }} эп.</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="anime-info">
+                            <h3 class="anime-title">{{ anime.title }}</h3>
+
+                            <div class="anime-meta">
+                                {% if anime.year %}
+                                <span>{{ anime.year }}</span>
+                                {% endif %}
+                                {% if anime.get('material_data', {}).get('anime_kind') %}
+                                <span>{{ anime.material_data.anime_kind|upper }}</span>
+                                {% endif %}
+                            </div>
+
+                            {% if anime.get('material_data', {}).get('description') %}
+                            <p class="anime-description">
+                                {{ anime.material_data.description }}
+                            </p>
+                            {% endif %}
+
+                            {% if anime.get('material_data', {}).get('anime_genres') %}
+                            <div class="anime-genres">
+                                {% for genre in anime.material_data.anime_genres[:3] %}
+                                <span class="genre-tag">{{ genre }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- Топ аниме -->
+        <section class="content-section">
+            <div class="container">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">🏆 Топ аниме всех времён</h2>
+                        <p class="section-subtitle">Лучшие аниме по версии зрителей</p>
+                    </div>
+                    <a href="/catalog?sort=rating" class="view-all-btn">
+                        Весь рейтинг <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+
+                <div class="top-anime-grid">
+                    {% for anime in popular_anime[:6] %}
+                    <div class="top-anime-card">
+                        <div class="top-anime-rank">#{{ loop.index }}</div>
+                        <div class="top-anime-poster">
+                            {% if anime.get('material_data', {}).get('poster_url') %}
+                            <img src="{{ anime.material_data.poster_url }}" alt="{{ anime.title }}">
+                            {% else %}
+                            <div class="poster-placeholder">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="top-anime-info">
+                            <h3>{{ anime.title }}</h3>
+                            <p>
+                                {% if anime.get('material_data', {}).get('description') %}
+                                {{ anime.material_data.description[:100] }}{% if anime.material_data.description|length > 100 %}...{% endif %}
+                                {% else %}
+                                Популярное аниме с высоким рейтингом
+                                {% endif %}
+                            </p>
+                            <div style="margin-top: 0.5rem;">
+                                {% if anime.get('material_data', {}).get('shikimori_rating') %}
+                                <span style="color: var(--warning);">
+                                    <i class="fas fa-star"></i> {{ anime.material_data.shikimori_rating }}
+                                </span>
+                                {% endif %}
+                                {% if anime.get('episodes_count') %}
+                                <span style="margin-left: 1rem; color: var(--text-muted);">
+                                    {{ anime.episodes_count }} эп.
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Быстрые ссылки -->
+        <section class="content-section">
+            <div class="container">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">🚀 Быстрый доступ</h2>
+                        <p class="section-subtitle">Популярные категории и жанры</p>
+                    </div>
+                </div>
+
+                <div class="quick-links">
+                    <a href="/catalog?status=ongoing" class="quick-link">
+                        <div class="quick-link-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h3>Онгоинги</h3>
+                        <p>Аниме которые выходят сейчас. Следите за новыми сериями каждую неделю!</p>
+                    </a>
+
+                    <a href="/catalog?season={{ current_season }}&year={{ current_year }}" class="quick-link">
+                        <div class="quick-link-icon">
+                            {{ season_emoji }}
+                        </div>
+                        <h3>{{ season_name_ru|title }} сезон</h3>
+                        <p>Все аниме {{ season_name_ru }} сезона {{ current_year }} года.</p>
+                    </a>
+
+                    <a href="/catalog?type=movie" class="quick-link">
+                        <div class="quick-link-icon">
+                            <i class="fas fa-film"></i>
+                        </div>
+                        <h3>Фильмы</h3>
+                        <p>Полнометражные аниме фильмы. Завершённые истории за один просмотр.</p>
+                    </a>
+
+                    <a href="/catalog?genre=Экшен" class="quick-link">
+                        <div class="quick-link-icon">
+                            <i class="fas fa-fist-raised"></i>
+                        </div>
+                        <h3>Экшен</h3>
+                        <p>Динамичные аниме с захватывающими боевыми сценами и приключениями.</p>
+                    </a>
+
+                    <a href="/catalog?genre=Романтика" class="quick-link">
+                        <div class="quick-link-icon">
+                            <i class="fas fa-heart"></i>
+                        </div>
+                        <h3>Романтика</h3>
+                        <p>Трогательные истории любви и отношений между персонажами.</p>
+                    </a>
+
+                    <a href="/catalog?year_from={{ current_year }}&year_to={{ current_year }}" class="quick-link">
+                        <div class="quick-link-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <h3>Новинки {{ current_year }}</h3>
+                        <p>Самые свежие релизы этого года.</p>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Популярные аниме -->
+        <section class="content-section trending-section">
+            <div class="container">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">🔥 Популярные сейчас</h2>
+                        <p class="section-subtitle">Аниме которые смотрят чаще всего</p>
+                    </div>
+                    <a href="/catalog?sort=popularity" class="view-all-btn">
+                        Смотреть все <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+
+                <div class="anime-grid">
+                    {% for anime in popular_anime %}
+                    <div class="anime-card">
+                        <div class="anime-poster">
+                            {% if anime.get('material_data', {}).get('poster_url') %}
+                            <img src="{{ anime.material_data.poster_url }}" alt="{{ anime.title }}" loading="lazy">
+                            {% else %}
+                            <div class="poster-placeholder">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            {% endif %}
+
+                            <div class="anime-overlay">
+                                <a href="/watch/{{ anime.id }}{% if anime.shikimori_id %}?sid={{ anime.shikimori_id }}{% endif %}" class="play-btn">
+                                    <i class="fas fa-play"></i>
+                                </a>
+                            </div>
+
+                            {% if anime.get('material_data', {}).get('shikimori_rating') %}
+                            <div class="anime-rating">
+                                <i class="fas fa-star"></i>
+                                {{ anime.material_data.shikimori_rating }}
+                            </div>
+                            {% endif %}
+
+                            {% if anime.get('episodes_count') %}
+                            <div class="anime-episode-count">{{ anime.episodes_count }} эп.</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="anime-info">
+                            <h3 class="anime-title">{{ anime.title }}</h3>
+
+                            <div class="anime-meta">
+                                {% if anime.year %}
+                                <span>{{ anime.year }}</span>
+                                {% endif %}
+                                {% if anime.get('material_data', {}).get('anime_kind') %}
+                                <span>{{ anime.material_data.anime_kind|upper }}</span>
+                                {% endif %}
+                            </div>
+
+                            {% if anime.get('material_data', {}).get('description') %}
+                            <p class="anime-description">
+                                {{ anime.material_data.description }}
+                            </p>
+                            {% endif %}
+
+                            {% if anime.get('material_data', {}).get('anime_genres') %}
+                            <div class="anime-genres">
+                                {% for genre in anime.material_data.anime_genres[:3] %}
+                                <span class="genre-tag">{{ genre }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    </main>
+    <!-- В футере добавь секцию с юридическими ссылками -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <!-- Существующие секции -->
+                <!-- НОВАЯ СЕКЦИЯ -->
+                <div class="footer-section">
+                    <h4>Правовая информация</h4>
+                    <ul>
+                        <li><a href="/terms-of-service">Пользовательское соглашение</a></li>
+                        <li><a href="/privacy-policy">Политика конфиденциальности</a></li>
+                        <li><a href="/cookie-policy">Политика Cookies</a></li>
+                        <li><a href="/dmca">DMCA</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2025 Anivest. Все права защищены.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Плавная прокрутка для якорных ссылок
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Анимация появления элементов при скролле
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver(function (entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Применяем анимацию к карточкам аниме
+        document.addEventListener('DOMContentLoaded', function () {
+            // Подготавливаем элементы для анимации
+            const animateElements = document.querySelectorAll('.anime-card, .quick-link, .top-anime-card');
+            animateElements.forEach((el, index) => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(30px)';
+                el.style.transition = `all 0.6s ease ${index * 0.1}s`;
+                observer.observe(el);
+            });
+
+            // Обработка ошибок загрузки постеров
+            const images = document.querySelectorAll('.anime-poster img');
+            images.forEach(img => {
+                img.addEventListener('error', function () {
+                    console.log('Ошибка загрузки постера:', this.src);
+                    this.style.display = 'none';
+
+                    // Показываем placeholder
+                    const placeholder = this.parentElement.querySelector('.poster-placeholder');
+                    if (placeholder) {
+                        placeholder.style.display = 'flex';
+                    }
+                });
+
+                img.addEventListener('load', function () {
+                    // Скрываем placeholder если изображение загрузилось
+                    const placeholder = this.parentElement.querySelector('.poster-placeholder');
+                    if (placeholder) {
+                        placeholder.style.display = 'none';
+                    }
+                });
+            });
+
+            // Параллакс эффект для hero секции
+            window.addEventListener('scroll', function () {
+                const scrolled = window.pageYOffset;
+                const hero = document.querySelector('.hero');
+                if (hero) {
+                    hero.style.transform = `translateY(${scrolled * 0.5}px)`;
+                }
+            });
+        });
+
+        // Живой поиск
+        const searchInput = document.querySelector('.search-input');
+        if (searchInput) {
+            let searchTimeout;
+            searchInput.addEventListener('input', function () {
+                clearTimeout(searchTimeout);
+                const query = this.value.trim();
+
+                if (query.length >= 2) {
+                    searchTimeout = setTimeout(() => {
+                        // Можно добавить превью результатов поиска
+                        console.log('Поиск:', query);
+                    }, 300);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подписка - Anivest</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <a href="/">
+                    <i class="fas fa-play-circle"></i>
+                    Anivest
+                </a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link">Главная</a></li>
+                <li><a href="/catalog" class="nav-link">Каталог</a></li>
+                <li><a href="/subscription" class="nav-link active">Подписка</a></li>
+            </ul>
+            <div class="nav-search">
+                <form action="/catalog" method="GET" class="search-form">
+                    <input type="text" name="q" placeholder="Поиск аниме..." class="search-input">
+                    <button type="submit" class="search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- БЛОК АВТОРИЗАЦИИ -->
+            <div class="nav-user">
+                {% if current_user %}
+                <div class="user-menu">
+                    <div class="user-avatar">
+                        <div class="avatar-img">
+                            {{ current_user.username[0].upper() }}
+                        </div>
+                        <span class="username">{{ current_user.username }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="user-dropdown">
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-user"></i> Профиль
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-heart"></i> Избранное
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-history"></i> История
+                        </a>
+                        <a href="#" class="dropdown-item">
+                            <i class="fas fa-cog"></i> Настройки
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('logout') }}" class="dropdown-item">
+                            <i class="fas fa-sign-out-alt"></i> Выйти
+                        </a>
+                    </div>
+                </div>
+                {% else %}
+                <div class="auth-buttons">
+                    <a href="{{ url_for('login') }}" class="btn btn-outline btn-sm">Войти</a>
+                    <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">Регистрация</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <main class="subscription-main">
+        <div class="container">
+            <!-- Заголовок -->
+            <div class="subscription-header">
+                <h1><i class="fas fa-crown"></i> Anivest Premium</h1>
+                <p class="subtitle">Наслаждайтесь аниме без ограничений и рекламы</p>
+            </div>
+
+            <!-- Главный баннер подписки -->
+            <section class="premium-banner">
+                <div class="banner-container">
+                    <!-- Декоративные элементы -->
+                    <div class="banner-decoration">
+                        <div class="glow-orb glow-1"></div>
+                        <div class="glow-orb glow-2"></div>
+                        <div class="glow-orb glow-3"></div>
+                    </div>
+
+                    <div class="banner-content">
+                        <div class="banner-left">
+                            <div class="premium-icon">
+                                <i class="fas fa-crown"></i>
+                            </div>
+                            <h2>Anivest Premium</h2>
+                            <p class="banner-subtitle">Премиум подписка для истинных ценителей аниме</p>
+                            
+                            <div class="banner-features">
+                                <div class="feature-item">
+                                    <i class="fas fa-ban"></i>
+                                    <span>Без рекламы навсегда</span>
+                                </div>
+                                <div class="feature-item">
+                                    <i class="fas fa-hd-video"></i>
+                                    <span>HD качество до 1080p</span>
+                                </div>
+                                <div class="feature-item">
+                                    <i class="fas fa-rocket"></i>
+                                    <span>Новые эпизоды сразу</span>
+                                </div>
+                                <div class="feature-item">
+                                    <i class="fas fa-download"></i>
+                                    <span>Скачивание для офлайн</span>
+                                </div>
+                                <div class="feature-item">
+                                    <i class="fas fa-devices"></i>
+                                    <span>На всех устройствах</span>
+                                </div>
+                                <div class="feature-item">
+                                    <i class="fas fa-headset"></i>
+                                    <span>Приоритетная поддержка</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="banner-right">
+                            <div class="pricing-card">
+                                <div class="special-offer">
+                                    <i class="fas fa-fire"></i>
+                                    <span>Специальное предложение</span>
+                                </div>
+                                
+                                <div class="price-display">
+                                    <div class="main-price">
+                                        <span class="price">299</span>
+                                        <span class="currency">₽/мес</span>
+                                    </div>
+                                    <div class="yearly-option">
+                                        <div class="discount-badge">
+                                            <i class="fas fa-percent"></i>
+                                            <span>Скидка 30%</span>
+                                        </div>
+                                        <div class="yearly-price">
+                                            2090 ₽/год (вместо 3588 ₽)
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="trial-info">
+                                    <i class="fas fa-gift"></i>
+                                    <span>7 дней бесплатно</span>
+                                </div>
+
+                                <button class="btn btn-premium" onclick="selectPlan('premium')">
+                                    <i class="fas fa-crown"></i>
+                                    Попробовать бесплатно
+                                </button>
+
+                                <div class="payment-security">
+                                    <i class="fas fa-shield-alt"></i>
+                                    <span>Безопасная оплата • Отмена в любое время</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Сравнение с бесплатной версией -->
+            <section class="comparison-section">
+                <h2>Чем Premium отличается от бесплатной версии?</h2>
+                <div class="comparison-table">
+                    <div class="comparison-row header">
+                        <div class="feature-name">Возможности</div>
+                        <div class="free-column">
+                            <i class="fas fa-user"></i>
+                            <span>Бесплатно</span>
+                        </div>
+                        <div class="premium-column">
+                            <i class="fas fa-crown"></i>
+                            <span>Premium</span>
+                        </div>
+                    </div>
+
+                    <div class="comparison-row">
+                        <div class="feature-name">Реклама</div>
+                        <div class="free-column">
+                            <i class="fas fa-times"></i>
+                            <span>Присутствует</span>
+                        </div>
+                        <div class="premium-column">
+                            <i class="fas fa-check"></i>
+                            <span>Отсутствует</span>
+                        </div>
+                    </div>
+
+                    <div class="comparison-row">
+                        <div class="feature-name">Качество видео</div>
+                        <div class="free-column">
+                            <i class="fas fa-video"></i>
+                            <span>До 720p</span>
+                        </div>
+                        <div class="premium-column">
+                            <i class="fas fa-hd-video"></i>
+                            <span>До 1080p HD</span>
+                        </div>
+                    </div>
+
+                    <div class="comparison-row">
+                        <div class="feature-name">Новые эпизоды</div>
+                        <div class="free-column">
+                            <i class="fas fa-clock"></i>
+                            <span>С задержкой</span>
+                        </div>
+                        <div class="premium-column">
+                            <i class="fas fa-rocket"></i>
+                            <span>Сразу</span>
+                        </div>
+                    </div>
+
+                    <div class="comparison-row">
+                        <div class="feature-name">Офлайн просмотр</div>
+                        <div class="free-column">
+                            <i class="fas fa-times"></i>
+                            <span>Недоступно</span>
+                        </div>
+                        <div class="premium-column">
+                            <i class="fas fa-download"></i>
+                            <span>Доступно</span>
+                        </div>
+                    </div>
+
+                    <div class="comparison-row">
+                        <div class="feature-name">Количество устройств</div>
+                        <div class="free-column">
+                            <i class="fas fa-mobile-alt"></i>
+                            <span>1 устройство</span>
+                        </div>
+                        <div class="premium-column">
+                            <i class="fas fa-devices"></i>
+                            <span>3 устройства</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Преимущества подписки -->
+            <section class="benefits-section">
+                <h2>Преимущества Premium подписки</h2>
+                <div class="benefits-grid">
+                    <div class="benefit-card">
+                        <div class="benefit-icon">
+                            <i class="fas fa-ban"></i>
+                        </div>
+                        <h3>Без рекламы</h3>
+                        <p>Наслаждайтесь просмотром без отвлекающих баннеров и видеорекламы</p>
+                    </div>
+
+                    <div class="benefit-card">
+                        <div class="benefit-icon">
+                            <i class="fas fa-hd-video"></i>
+                        </div>
+                        <h3>Высокое качество</h3>
+                        <p>Смотрите аниме в качестве до 1080p с кристально чистым звуком</p>
+                    </div>
+
+                    <div class="benefit-card">
+                        <div class="benefit-icon">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <h3>Новые эпизоды сразу</h3>
+                        <p>Получайте доступ к новым сериям в день выхода без задержек</p>
+                    </div>
+
+                    <div class="benefit-card">
+                        <div class="benefit-icon">
+                            <i class="fas fa-download"></i>
+                        </div>
+                        <h3>Офлайн просмотр</h3>
+                        <p>Загружайте эпизоды и смотрите их без интернета</p>
+                    </div>
+
+                    <div class="benefit-card">
+                        <div class="benefit-icon">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <h3>Все устройства</h3>
+                        <p>Синхронизация между всеми вашими устройствами</p>
+                    </div>
+
+                    <div class="benefit-card">
+                        <div class="benefit-icon">
+                            <i class="fas fa-headset"></i>
+                        </div>
+                        <h3>Приоритетная поддержка</h3>
+                        <p>Быстрая техническая поддержка 24/7</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- FAQ -->
+            <section class="faq-section">
+                <h2>Часто задаваемые вопросы</h2>
+                <div class="faq-list">
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Как отменить подписку?</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Вы можете отменить подписку в любое время в настройках профиля. Доступ к Premium функциям сохранится до окончания оплаченного периода.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Можно ли попробовать Premium бесплатно?</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Да! Мы предоставляем 7-дневный бесплатный пробный период для новых пользователей Premium.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>На скольких устройствах можно смотреть?</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Premium подписка позволяет смотреть на 3 устройствах одновременно.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Какие способы оплаты доступны?</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Мы принимаем карты Visa/MasterCard, СБП, Яндекс.Деньги, QIWI и криптовалюты.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span>Будет ли автоматическое продление?</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Да, подписка продлевается автоматически. Вы можете отключить автопродление в настройках в любое время.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CTA секция -->
+            <section class="cta-section">
+                <div class="cta-content">
+                    <h2>Готовы улучшить опыт просмотра?</h2>
+                    <p>Присоединяйтесь к тысячам зрителей, которые уже наслаждаются аниме без рекламы</p>
+                    <div class="cta-buttons">
+                        <button class="btn btn-primary btn-large" onclick="selectPlan('premium')">
+                            <i class="fas fa-crown"></i>
+                            Попробовать Premium бесплатно
+                        </button>
+                        <button class="btn btn-outline btn-large" onclick="showDemo()">
+                            <i class="fas fa-play"></i>
+                            Посмотреть демо
+                        </button>
+                    </div>
+                    <p class="cta-note">
+                        <i class="fas fa-shield-alt"></i>
+                        Безопасная оплата • Отмена в любое время • 7 дней бесплатно
+                    </p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Модальное окно выбора плана -->
+    <div id="planModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Оформление Premium подписки</h3>
+                <button class="modal-close" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div class="selected-plan-info">
+                    <div class="plan-summary">
+                        <div class="plan-icon">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <div class="plan-details">
+                            <h4>Anivest Premium</h4>
+                            <ul class="plan-features-list">
+                                <li><i class="fas fa-check"></i> Без рекламы</li>
+                                <li><i class="fas fa-check"></i> HD качество до 1080p</li>
+                                <li><i class="fas fa-check"></i> Новые эпизоды сразу</li>
+                                <li><i class="fas fa-check"></i> Офлайн просмотр</li>
+                                <li><i class="fas fa-check"></i> 3 устройства одновременно</li>
+                                <li><i class="fas fa-check"></i> Приоритетная поддержка</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="billing-period">
+                    <h4>Период оплаты</h4>
+                    <div class="period-options">
+                        <label class="period-option">
+                            <input type="radio" name="period" value="monthly" checked>
+                            <div class="option-content">
+                                <span class="period-name">Месячная</span>
+                                <span class="period-price">299 ₽/мес</span>
+                            </div>
+                        </label>
+
+                        <label class="period-option recommended">
+                            <input type="radio" name="period" value="yearly">
+                            <div class="option-content">
+                                <span class="period-name">Годовая</span>
+                                <span class="period-price">2090 ₽/год</span>
+                                <span class="period-discount">Скидка 30%</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="payment-methods">
+                    <h4>Способ оплаты</h4>
+                    <div class="payment-options">
+                        <label class="payment-option">
+                            <input type="radio" name="payment" value="card" checked>
+                            <div class="option-content">
+                                <i class="fas fa-credit-card"></i>
+                                <span>Банковская карта</span>
+                            </div>
+                        </label>
+
+                        <label class="payment-option">
+                            <input type="radio" name="payment" value="sbp">
+                            <div class="option-content">
+                                <i class="fas fa-mobile-alt"></i>
+                                <span>СБП</span>
+                            </div>
+                        </label>
+
+                        <label class="payment-option">
+                            <input type="radio" name="payment" value="yandex">
+                            <div class="option-content">
+                                <i class="fab fa-yandex"></i>
+                                <span>Яндекс.Деньги</span>
+                            </div>
+                        </label>
+
+                        <label class="payment-option">
+                            <input type="radio" name="payment" value="crypto">
+                            <div class="option-content">
+                                <i class="fab fa-bitcoin"></i>
+                                <span>Криптовалюта</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal()">Отмена</button>
+                <button class="btn btn-primary" onclick="processPurchase()">
+                    <i class="fas fa-lock"></i>
+                    Оплатить безопасно
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Правовая информация</h4>
+                    <ul>
+                        <li><a href="/terms-of-service">Пользовательское соглашение</a></li>
+                        <li><a href="/privacy-policy">Политика конфиденциальности</a></li>
+                        <li><a href="/cookie-policy">Политика Cookies</a></li>
+                        <li><a href="/dmca">DMCA</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2025 Anivest. Все права защищены.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Выбор плана
+        function selectPlan() {
+            document.getElementById('planModal').style.display = 'flex';
+        }
+
+        // Закрытие модального окна
+        function closeModal() {
+            document.getElementById('planModal').style.display = 'none';
+        }
+
+        // Обработка покупки
+        function processPurchase() {
+            const paymentMethod = document.querySelector('input[name="payment"]:checked').value;
+            const billingPeriod = document.querySelector('input[name="period"]:checked').value;
+
+            alert(`Перенаправление на оплату:\nПлан: Premium\nПериод: ${billingPeriod}\nСпособ: ${paymentMethod}`);
+            closeModal();
+        }
+
+        // Переключение FAQ
+        function toggleFaq(element) {
+            const faqItem = element.parentElement;
+            const answer = faqItem.querySelector('.faq-answer');
+            const icon = element.querySelector('i');
+
+            if (faqItem.classList.contains('active')) {
+                faqItem.classList.remove('active');
+                answer.style.maxHeight = null;
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                // Закрываем все остальные FAQ
+                document.querySelectorAll('.faq-item.active').forEach(item => {
+                    item.classList.remove('active');
+                    item.querySelector('.faq-answer').style.maxHeight = null;
+                    item.querySelector('i').style.transform = 'rotate(0deg)';
+                });
+
+                faqItem.classList.add('active');
+                answer.style.maxHeight = answer.scrollHeight + 'px';
+                icon.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        // Демо функция
+        function showDemo() {
+            alert('Скоро будет доступно демо Premium функций!');
+        }
+
+        // Закрытие модального окна при клике вне его
+        window.onclick = function (event) {
+            const modal = document.getElementById('planModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // Анимация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function () {
+            const banner = document.querySelector('.premium-banner');
+            banner.style.animationDelay = '0.2s';
+            banner.classList.add('fade-in');
+        });
+    </script>
+
+    <style>
+        /* Стили для главного баннера */
+        .premium-banner {
+            margin-bottom: 5rem;
+            position: relative;
+        }
+
+        .banner-container {
+            background: var(--gradient-dark);
+            border-radius: var(--border-radius-lg);
+            padding: 3rem;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .banner-decoration {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            background: var(--gradient-primary);
+            opacity: 0.1;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .glow-1 {
+            width: 200px;
+            height: 200px;
+            top: -50px;
+            right: -50px;
+            animation-delay: 0s;
+        }
+
+        .glow-2 {
+            width: 150px;
+            height: 150px;
+            bottom: -30px;
+            left: -30px;
+            animation-delay: 2s;
+        }
+
+        .glow-3 {
+            width: 100px;
+            height: 100px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation-delay: 4s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        .banner-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 3rem;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .premium-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            color: white;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .banner-left h2 {
+            font-size: 3rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            line-height: 1.1;
+        }
+
+        .banner-subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .banner-features {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .banner-features .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .banner-features .feature-item i {
+            color: var(--primary);
+            font-size: 1.2rem;
+            width: 20px;
+        }
+
+        .pricing-card {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            box-shadow: var(--shadow-xl);
+            text-align: center;
+            position: relative;
+        }
+
+        .special-offer {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .price-display {
+            margin-bottom: 2rem;
+        }
+
+        .main-price {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .main-price .price {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .main-price .currency {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+        }
+
+        .yearly-option {
+            padding: 1rem;
+            background: rgba(139, 92, 246, 0.1);
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .discount-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            color: var(--success);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .yearly-price {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .trial-info {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-weight: 600;
+        }
+
+        .btn-premium {
+            background: var(--gradient-primary) !important;
+            color: white;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            width: 100%;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .btn-premium:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .payment-security {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .payment-security i {
+            color: var(--success);
+        }
+
+        /* Таблица сравнения */
+        .comparison-section {
+            margin-bottom: 5rem;
+        }
+
+        .comparison-section h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            color: var(--text-primary);
+            margin-bottom: 3rem;
+        }
+
+        .comparison-table {
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
+            overflow: hidden;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .comparison-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+        }
+
+        .comparison-row:last-child {
+            border-bottom: none;
+        }
+
+        .comparison-row.header {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+        }
+
+        .feature-name {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .free-column, .premium-column {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            text-align: center;
+        }
+
+        .free-column {
+            color: var(--text-muted);
+        }
+
+        .premium-column {
+            color: var(--primary);
+        }
+
+        .free-column i.fa-times {
+            color: var(--error);
+        }
+
+        .premium-column i.fa-check {
+            color: var(--success);
+        }
+
+        /* Адаптивность */
+        @media (max-width: 1200px) {
+            .banner-content {
+                grid-template-columns: 1fr 350px;
+                gap: 2rem;
+            }
+        }
+
+        @media (max-width: 968px) {
+            .banner-content {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+                text-align: center;
+            }
+
+            .banner-features {
+                grid-template-columns: 1fr;
+            }
+
+            .comparison-row {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .comparison-row.header {
+                display: none;
+            }
+
+            .feature-name {
+                font-size: 1.1rem;
+                padding: 0.5rem;
+                background: var(--bg-tertiary);
+                border-radius: var(--border-radius);
+                margin-bottom: 1rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .banner-container {
+                padding: 2rem;
+            }
+
+            .banner-left h2 {
+                font-size: 2.5rem;
+            }
+
+            .main-price .price {
+                font-size: 3rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .banner-container {
+                padding: 1.5rem;
+            }
+
+            .banner-left h2 {
+                font-size: 2rem;
+            }
+
+            .main-price .price {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</body>
+</html>
