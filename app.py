@@ -10,110 +10,128 @@ import sqlite3
 import hashlib
 from urllib.parse import quote
 from functools import wraps
+import signal
+import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import atexit
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-# ИСПРАВЛЕНИЕ: Используем переменные окружения для продакшена
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-this-in-production')
 
+# ===== GRACEFUL SHUTDOWN HANDLING =====
+shutdown_flag = threading.Event()
+
+def signal_handler(sig, frame):
+    """Обработка сигналов для graceful shutdown"""
+    logger.info(f'Получен сигнал {sig}, инициируем graceful shutdown...')
+    shutdown_flag.set()
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
+
+# Thread pool для асинхронных операций
+executor = ThreadPoolExecutor(max_workers=4)
+
+def cleanup():
+    """Очистка ресурсов при завершении"""
+    logger.info("Завершение работы executor...")
+    executor.shutdown(wait=True)
+
+atexit.register(cleanup)
+
 # ===== НАСТРОЙКА БАЗЫ ДАННЫХ =====
+db_lock = threading.Lock()
+
 def init_db():
     """Инициализация базы данных"""
-    conn = sqlite3.connect('anivest.db')
-    cursor = conn.cursor()
-    
-    # Таблица пользователей
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username VARCHAR(50) UNIQUE NOT NULL,
-            email VARCHAR(100) UNIQUE NOT NULL,
-            password_hash VARCHAR(255) NOT NULL,
-            avatar_url VARCHAR(255),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            is_active BOOLEAN DEFAULT 1,
-            role VARCHAR(20) DEFAULT 'user'
-        )
-    ''')
-    
-    # Таблица комментариев
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS comments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            anime_id VARCHAR(100) NOT NULL,
-            user_id INTEGER NOT NULL,
-            content TEXT NOT NULL,
-            is_spoiler BOOLEAN DEFAULT 0,
-            rating INTEGER CHECK(rating >= 1 AND rating <= 10),
-            episode_number INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            likes INTEGER DEFAULT 0,
-            dislikes INTEGER DEFAULT 0,
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-    ''')
-    
-    # Таблица лайков/дизлайков комментариев
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS comment_votes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            comment_id INTEGER NOT NULL,
-            user_id INTEGER NOT NULL,
-            vote_type VARCHAR(10) CHECK(vote_type IN ('like', 'dislike')),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(comment_id, user_id),
-            FOREIGN KEY (comment_id) REFERENCES comments (id),
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-    ''')
-    
-    # Таблица избранного аниме
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS favorites (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            anime_id VARCHAR(100) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(user_id, anime_id),
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-    ''')
-    
-    # Таблица истории просмотров
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS watch_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            anime_id VARCHAR(100) NOT NULL,
-            episode_number INTEGER DEFAULT 1,
-            season_number INTEGER DEFAULT 1,
-            last_watched TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(user_id, anime_id),
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
-
-# ИСПРАВЛЕНИЕ: Ленивая инициализация БД
-_db_initialized = False
+    with db_lock:
+        conn = sqlite3.connect('anivest.db')
+        cursor = conn.cursor()
+        
+        # Таблица пользователей
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username VARCHAR(50) UNIQUE NOT NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                avatar_url VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_active BOOLEAN DEFAULT 1,
+                role VARCHAR(20) DEFAULT 'user'
+            )
+        ''')
+        
+        # Таблица комментариев
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS comments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                anime_id VARCHAR(100) NOT NULL,
+                user_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                is_spoiler BOOLEAN DEFAULT 0,
+                rating INTEGER CHECK(rating >= 1 AND rating <= 10),
+                episode_number INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                likes INTEGER DEFAULT 0,
+                dislikes INTEGER DEFAULT 0,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Таблица лайков/дизлайков комментариев
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS comment_votes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                comment_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                vote_type VARCHAR(10) CHECK(vote_type IN ('like', 'dislike')),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(comment_id, user_id),
+                FOREIGN KEY (comment_id) REFERENCES comments (id),
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Таблица избранного аниме
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS favorites (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                anime_id VARCHAR(100) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, anime_id),
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Таблица истории просмотров
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS watch_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                anime_id VARCHAR(100) NOT NULL,
+                episode_number INTEGER DEFAULT 1,
+                season_number INTEGER DEFAULT 1,
+                last_watched TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, anime_id),
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
 
 def get_db_connection():
-    """Получение соединения с БД"""
-    global _db_initialized
-    if not _db_initialized:
-        try:
-            init_db()
-            _db_initialized = True
-        except Exception as e:
-            logger.error(f"DB init error: {e}")
-    
-    conn = sqlite3.connect('anivest.db')
+    """Получение соединения с БД с таймаутом"""
+    conn = sqlite3.connect('anivest.db', timeout=10.0)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -145,7 +163,7 @@ def get_current_user():
         
         return dict(user) if user else None
     except Exception as e:
-        logger.error(f"Get user error: {e}")
+        logger.error(f"Ошибка получения пользователя: {e}")
         return None
 
 # ===== ОПРЕДЕЛЕНИЕ СЕЗОНОВ =====
@@ -156,17 +174,15 @@ def get_current_season():
     month = now.month
     year = now.year
     
-    # Определяем сезон по месяцу
-    if month in [1, 2, 3]:  # Зима: декабрь, январь, февраль
+    if month in [1, 2, 3]:
         season = 'winter'
-        # Если декабрь, то это зима следующего года
         if month == 12:
             year += 1
-    elif month in [4, 5, 6]:  # Весна: март, апрель, май
+    elif month in [4, 5, 6]:
         season = 'spring'
-    elif month in [7, 8, 9]:  # Лето: июнь, июль, август
+    elif month in [7, 8, 9]:
         season = 'summer'
-    else:  # Осень: сентябрь, октябрь, ноябрь
+    else:
         season = 'fall'
     
     return season, year
@@ -191,16 +207,24 @@ def get_season_emoji(season):
     }
     return season_emojis.get(season, '🌟')
 
-# ===== API КЛАССЫ =====
+# ===== УЛУЧШЕННЫЕ API КЛАССЫ =====
 
 class ShikimoriAPI:
     def __init__(self):
         self.base_url = "https://shikimori.one/api"
         self.cache = {}
-        self.cache_timeout = 600  # 10 минут
+        self.cache_timeout = 900  # 15 минут (увеличено)
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Anivest/1.0 (https://anivest.local)',
+            'Accept': 'application/json'
+        })
         
     def _make_request(self, endpoint, params=None):
-        """Базовый метод для выполнения запросов к Shikimori API"""
+        """Базовый метод для выполнения запросов к Shikimori API с улучшенной обработкой"""
+        if shutdown_flag.is_set():
+            return None
+            
         cache_key = f"shiki_{endpoint}_{str(params)}"
         
         # Проверяем кеш
@@ -211,35 +235,28 @@ class ShikimoriAPI:
                 return cached_data
         
         try:
-            headers = {
-                'User-Agent': 'Anivest/1.0 (https://anivest.local)',
-                'Accept': 'application/json'
-            }
-            
             full_params = {}
             if params:
                 full_params.update(params)
                 
             url = f"{self.base_url}/{endpoint}"
-            logger.info(f"Shikimori request: {url} with params: {full_params}")
+            logger.info(f"Shikimori request: {url}")
             
-            # ИСПРАВЛЕНИЕ: Уменьшен тайм-аут для продакшена
-            response = requests.get(url, params=full_params, headers=headers, timeout=5)
+            # Уменьшенный таймаут для Render
+            response = self.session.get(url, params=full_params, timeout=8)
             response.raise_for_status()
             
             data = response.json()
             logger.info(f"Shikimori response: {len(data) if isinstance(data, list) else 1} items")
-            
-            # Логируем первый элемент для диагностики
-            if isinstance(data, list) and data:
-                first_item = data[0]
-                logger.info(f"Первый элемент: {first_item.get('name')} [{first_item.get('kind')}] - рейтинг: {first_item.get('score')}")
             
             # Кешируем результат
             self.cache[cache_key] = (data, time.time())
             
             return data
             
+        except requests.exceptions.Timeout:
+            logger.warning(f"Таймаут Shikimori API: {endpoint}")
+            return None
         except requests.exceptions.RequestException as e:
             logger.error(f"Ошибка Shikimori API запроса: {e}")
             return None
@@ -250,93 +267,60 @@ class ShikimoriAPI:
     def search_anime(self, query=None, filters=None):
         """Поиск аниме в Shikimori"""
         params = {
-            'limit': 50,
-            'censored': 'true'  # Скрываем 18+ контент
+            'limit': 30,  # Уменьшено для скорости
+            'censored': 'true'
         }
         
         if query:
             params['search'] = query
             
         if filters:
-            # Маппинг наших фильтров на Shikimori параметры
             if filters.get('genre'):
-                # Русские жанры → ID жанров для Shikimori
                 genre_mapping = {
-                    'Экшен': '1',          # Action
-                    'Приключения': '2',    # Adventure
-                    'Комедия': '4',        # Comedy
-                    'Драма': '8',          # Drama
-                    'Фэнтези': '10',       # Fantasy
-                    'Романтика': '22',     # Romance
-                    'Фантастика': '24',    # Sci-Fi
-                    'Сверхъестественное': '37',  # Supernatural
-                    'Психологическое': '40',     # Psychological
-                    'Триллер': '41',       # Thriller
-                    'Повседневность': '36', # Slice of Life
-                    'Школа': '23',         # School
-                    'Спорт': '30',         # Sports
-                    'Военное': '38',       # Military
-                    'Исторический': '13'   # Historical
+                    'Экшен': '1', 'Приключения': '2', 'Комедия': '4', 'Драма': '8',
+                    'Фэнтези': '10', 'Романтика': '22', 'Фантастика': '24', 
+                    'Сверхъестественное': '37', 'Психологическое': '40', 'Триллер': '41',
+                    'Повседневность': '36', 'Школа': '23', 'Спорт': '30', 'Военное': '38',
+                    'Исторический': '13'
                 }
                 genre = filters['genre']
                 mapped_genre = genre_mapping.get(genre)
                 if mapped_genre:
                     params['genre'] = mapped_genre
-                    logger.info(f"Маппинг жанра: {genre} → ID {mapped_genre}")
                     
             if filters.get('type'):
-                # Маппинг типов
                 type_mapping = {
-                    'tv': 'tv',
-                    'movie': 'movie', 
-                    'ova': 'ova',
-                    'ona': 'ona',
-                    'special': 'special'
+                    'tv': 'tv', 'movie': 'movie', 'ova': 'ova',
+                    'ona': 'ona', 'special': 'special'
                 }
                 filter_type = filters['type']
                 if filter_type in type_mapping:
                     params['kind'] = type_mapping[filter_type]
                     
             if filters.get('status'):
-                # Маппинг статусов
                 status_mapping = {
-                    'released': 'released',
-                    'ongoing': 'ongoing', 
-                    'anons': 'anons'
+                    'released': 'released', 'ongoing': 'ongoing', 'anons': 'anons'
                 }
                 if filters['status'] in status_mapping:
                     params['status'] = status_mapping[filters['status']]
             
-            # Обработка сезонного фильтра
             if filters.get('season'):
-                # Формат: "summer_2025"
                 params['season'] = filters['season']
-                logger.info(f"Фильтр по сезону: {filters['season']}")
-                    
-            # Обработка диапазона годов
             elif filters.get('year_from') and filters.get('year_to'):
                 year_from = filters['year_from']
                 year_to = filters['year_to']
-                
-                # Если года одинаковые, используем season для конкретного года
                 if year_from == year_to:
                     params['season'] = str(year_from)
-                    logger.info(f"Фильтр по году: {year_from}")
             elif filters.get('year_from'):
-                # Только начальный год
                 params['season'] = f"{filters['year_from']}"
             elif filters.get('year_to'):
-                # Только конечный год
                 params['season'] = f"{filters['year_to']}"
             elif filters.get('year'):
-                # Старый параметр year для совместимости
                 params['season'] = f"{filters['year']}"
                     
-        # Сортировка по популярности по умолчанию
         if 'order' not in params:
             params['order'] = 'popularity'
         
-        logger.info(f"Поиск аниме: query='{query}', params={params}")
         return self._make_request('animes', params)
 
     def get_anime(self, anime_id):
@@ -346,28 +330,21 @@ class ShikimoriAPI:
     def get_seasonal_anime(self, season=None, year=None, limit=20):
         """Получение популярных аниме текущего/указанного сезона"""
         if not season or not year:
-            # Если сезон не указан, получаем текущий
             season, year = get_current_season()
         
-        # Сначала пробуем строгие параметры
         params = {
-            'limit': limit * 3,  # Запрашиваем больше для фильтрации
+            'limit': min(limit * 2, 40),  # Ограничение для скорости
             'season': f'{season}_{year}',
             'order': 'popularity',
             'censored': 'true',
-            'status': 'released,ongoing'  # Только вышедшие и онгоинги
+            'status': 'released,ongoing'
         }
         
-        logger.info(f"Запрос сезонных аниме: {season}_{year}")
-        
-        # Получаем данные от Shikimori
         all_results = self._make_request('animes', params)
         
         if not all_results:
-            logger.warning("Не удалось получить сезонные аниме, пробуем без фильтров сезона")
-            # Fallback: получаем популярные аниме этого года
             fallback_params = {
-                'limit': limit * 2,
+                'limit': min(limit * 2, 40),
                 'order': 'popularity',
                 'censored': 'true',
                 'season': str(year)
@@ -375,86 +352,55 @@ class ShikimoriAPI:
             all_results = self._make_request('animes', fallback_params)
         
         if not all_results:
-            logger.warning("Fallback тоже не сработал")
             return []
         
-        # Фильтрация на стороне клиента для получения только аниме
         filtered_results = []
         for anime in all_results:
             anime_kind = anime.get('kind', '')
             anime_score = float(anime.get('score', 0) or 0)
             scored_by = int(anime.get('scored_by', 0) or 0)
             
-            # ✅ Более мягкие фильтры для аниме:
-            if (anime_kind in ['tv', 'movie', 'ova', 'ona', 'special'] and  # Только аниме
-                (anime_score >= 5.0 or scored_by >= 500)):  # Либо хороший рейтинг, либо популярность
-                
-                # Добавляем показатель популярности для сортировки
+            if (anime_kind in ['tv', 'movie', 'ova', 'ona', 'special'] and  
+                (anime_score >= 5.0 or scored_by >= 500)):
                 anime['popularity_score'] = (scored_by * 0.1) + (anime_score * 1000)
                 filtered_results.append(anime)
         
-        # Сортируем по популярности
         filtered_results.sort(key=lambda x: x.get('popularity_score', 0), reverse=True)
-        
-        # Возвращаем топ аниме
-        top_results = filtered_results[:limit]
-        
-        logger.info(f"Возвращаем {len(top_results)} сезонных аниме для {season}_{year}")
-        
-        # Логируем топ-3 для проверки
-        for i, anime in enumerate(top_results[:3], 1):
-            score = anime.get('score', 'N/A')
-            scored_by = anime.get('scored_by', 'N/A')
-            kind = anime.get('kind', 'N/A')
-            logger.info(f"#{i}: {anime.get('name')} [{kind}] - Рейтинг: {score}, Оценок: {scored_by}")
-        
-        return top_results
+        return filtered_results[:limit]
 
     def get_popular_anime(self, limit=20):
         """Получение популярных аниме всех времён"""
         params = {
-            'limit': limit * 2,  # Запрашиваем больше для фильтрации
+            'limit': min(limit * 2, 40),
             'order': 'popularity',
             'censored': 'true'
         }
         
-        logger.info(f"Запрос {limit} популярных аниме")
-        
-        # Получаем данные от Shikimori
         all_results = self._make_request('animes', params)
         
         if not all_results:
             return []
         
-        # Фильтрация популярных аниме
         filtered_results = []
         for anime in all_results:
             anime_kind = anime.get('kind', '')
             anime_score = float(anime.get('score', 0) or 0)
             scored_by = int(anime.get('scored_by', 0) or 0)
             
-            # ✅ Более мягкие фильтры для популярных аниме:
-            if (anime_kind in ['tv', 'movie', 'ova', 'ona', 'special'] and  # Только аниме
-                (anime_score >= 6.0 or scored_by >= 1000)):  # Либо хороший рейтинг, либо много оценок
-                
+            if (anime_kind in ['tv', 'movie', 'ova', 'ona', 'special'] and  
+                (anime_score >= 6.0 or scored_by >= 1000)):
                 filtered_results.append(anime)
         
-        # Сортируем по рейтингу и популярности
         filtered_results.sort(key=lambda x: (float(x.get('score', 0) or 0), int(x.get('scored_by', 0) or 0)), reverse=True)
-        
-        # Возвращаем топ популярных аниме
-        top_results = filtered_results[:limit]
-        
-        logger.info(f"Возвращаем {len(top_results)} популярных аниме")
-        
-        return top_results
+        return filtered_results[:limit]
 
 class KodikAPI:
     def __init__(self):
         self.base_url = "https://kodikapi.com"
         self.token = None
         self.cache = {}
-        self.cache_timeout = 300  # 5 минут
+        self.cache_timeout = 600
+        self.session = requests.Session()
         
     def get_token(self):
         """Получение токена для API"""
@@ -466,9 +412,9 @@ class KodikAPI:
         
         for token in test_tokens:
             try:
-                # ИСПРАВЛЕНИЕ: Уменьшен тайм-аут
-                response = requests.post(f"{self.base_url}/list", 
-                                       params={"token": token, "limit": 1}, timeout=3)
+                response = self.session.post(f"{self.base_url}/list", 
+                                           params={"token": token, "limit": 1}, 
+                                           timeout=5)
                 if response.status_code == 200:
                     self.token = token
                     logger.info(f"Kodik токен найден: {token[:10]}...")
@@ -482,16 +428,17 @@ class KodikAPI:
 
     def _make_request(self, endpoint, params=None):
         """Базовый метод для выполнения запросов к Kodik API"""
+        if shutdown_flag.is_set():
+            return None
+            
         if not self.token:
             self.get_token()
             
         if not self.token:
-            logger.error("Kodik токен недоступен")
             return None
             
         cache_key = f"kodik_{endpoint}_{str(params)}"
         
-        # Проверяем кеш
         if cache_key in self.cache:
             cached_data, timestamp = self.cache[cache_key]
             if time.time() - timestamp < self.cache_timeout:
@@ -503,19 +450,19 @@ class KodikAPI:
                 full_params.update(params)
                 
             url = f"{self.base_url}/{endpoint}"
-            logger.info(f"Kodik request: {url}")
             
-            # ИСПРАВЛЕНИЕ: Уменьшен тайм-аут
-            response = requests.post(url, params=full_params, timeout=8)
+            # Уменьшенный таймаут для Render
+            response = self.session.post(url, params=full_params, timeout=7)
             response.raise_for_status()
             
             data = response.json()
-            
-            # Кешируем результат
             self.cache[cache_key] = (data, time.time())
             
             return data
             
+        except requests.exceptions.Timeout:
+            logger.warning(f"Таймаут Kodik API: {endpoint}")
+            return None
         except requests.exceptions.RequestException as e:
             logger.error(f"Ошибка Kodik API запроса: {e}")
             return None
@@ -528,7 +475,7 @@ class KodikAPI:
         params = {
             "shikimori_id": shikimori_id,
             "with_material_data": True,
-            "limit": 20
+            "limit": 10  # Уменьшено
         }
         return self._make_request("search", params)
 
@@ -537,70 +484,53 @@ class KodikAPI:
         params = {
             "title": title,
             "with_material_data": True,
-            "limit": 10
+            "limit": 5  # Уменьшено
         }
         return self._make_request("search", params)
 
 class HybridAnimeService:
-    """Гибридный сервис, использующий Shikimori для поиска и Kodik для плеера"""
+    """Гибридный сервис с улучшенной производительностью"""
     
     def __init__(self):
         self.shikimori = ShikimoriAPI()
         self.kodik = KodikAPI()
-        self.poster_cache = {}  # Кеш проверок доступности постеров
+        self.poster_cache = {}
         
-    def _check_image_availability(self, url, timeout=3):
-        """Проверка доступности изображения по URL"""
-        if not url:
-            return False
-            
-        # Проверяем кеш
-        if url in self.poster_cache:
-            return self.poster_cache[url]
+    def _check_image_availability_async(self, url, timeout=2):
+        """Асинхронная проверка доступности изображения с уменьшенным таймаутом"""
+        if not url or url in self.poster_cache:
+            return self.poster_cache.get(url, False)
         
         try:
-            # Делаем HEAD запрос для проверки без загрузки всего изображения
             response = requests.head(url, timeout=timeout, allow_redirects=True)
             
-            # Проверяем статус код и тип контента
             if response.status_code == 200:
                 content_type = response.headers.get('content-type', '').lower()
-                # Проверяем, что это действительно изображение
                 if any(img_type in content_type for img_type in ['image/', 'jpeg', 'png', 'gif', 'webp']):
                     self.poster_cache[url] = True
                     return True
             
-            logger.warning(f"Изображение недоступно: {url} (статус: {response.status_code})")
             self.poster_cache[url] = False
             return False
             
-        except Exception as e:
-            logger.warning(f"Ошибка при проверке изображения {url}: {e}")
+        except Exception:
             self.poster_cache[url] = False
             return False
         
     def search_anime(self, query=None, filters=None):
-        """Основной поиск аниме"""
+        """Основной поиск аниме с улучшенной производительностью"""
         try:
-            # 1. Ищем в Shikimori (основной поиск)
-            logger.info(f"Поиск в Shikimori: query='{query}', filters={filters}")
             shikimori_results = self.shikimori.search_anime(query, filters)
             
             if not shikimori_results:
-                logger.warning("Shikimori не вернул результатов")
                 return []
             
-            # 2. Фильтрация на стороне клиента для исключения дорам
             anime_results = []
             for anime in shikimori_results:
                 anime_kind = anime.get('kind', '')
-                # Исключаем дорамы, но оставляем все виды аниме
                 if anime_kind in ['tv', 'movie', 'ova', 'ona', 'special', 'music']:
                     anime_results.append(anime)
-                else:
-                    logger.debug(f"Исключаем не-аниме: {anime.get('name')} [{anime_kind}]")
             
-            # 3. Фильтрация по диапазону годов на стороне клиента (если нужно)
             if filters and filters.get('year_from') and filters.get('year_to'):
                 year_from = int(filters['year_from'])
                 year_to = int(filters['year_to'])
@@ -612,15 +542,13 @@ class HybridAnimeService:
                         if anime_year and year_from <= anime_year <= year_to:
                             year_filtered_results.append(anime)
                     anime_results = year_filtered_results
-                    logger.info(f"После фильтрации по годам {year_from}-{year_to}: {len(anime_results)} аниме")
             
-            # 4. Обогащаем данными из Kodik (плееры)
+            # Ограничиваем обогащение для скорости
             enriched_results = []
-            for anime in anime_results[:20]:  # Ограничиваем для производительности
-                enriched_anime = self._enrich_with_kodik(anime)
+            for anime in anime_results[:15]:  # Уменьшено до 15
+                enriched_anime = self._enrich_with_kodik_fast(anime)
                 enriched_results.append(enriched_anime)
                 
-            logger.info(f"Найдено {len(enriched_results)} аниме (исключены дорамы)")
             return enriched_results
             
         except Exception as e:
@@ -630,46 +558,35 @@ class HybridAnimeService:
     def get_seasonal_anime(self, season=None, year=None, limit=20):
         """Получение аниме текущего/указанного сезона"""
         try:
-            logger.info(f"Получение сезонных аниме: {season}_{year} (лимит: {limit})")
             shikimori_results = self.shikimori.get_seasonal_anime(season, year, limit)
             
             if not shikimori_results:
-                logger.warning("Shikimori не вернул сезонных аниме")
-                # Fallback: получаем просто популярные аниме
-                logger.info("Используем fallback: популярные аниме")
                 return self.get_popular_anime(limit)
             
-            # Обогащаем данными из Kodik
             enriched_results = []
             for anime in shikimori_results:
-                enriched_anime = self._enrich_with_kodik(anime)
+                enriched_anime = self._enrich_with_kodik_fast(anime)
                 enriched_results.append(enriched_anime)
                 
-            logger.info(f"Найдено {len(enriched_results)} сезонных аниме")
             return enriched_results
             
         except Exception as e:
             logger.error(f"Ошибка при получении сезонных аниме: {e}")
-            # В случае ошибки возвращаем популярные аниме
-            logger.info("Ошибка, используем fallback: популярные аниме")
             return self.get_popular_anime(limit)
 
     def get_popular_anime(self, limit=20):
         """Получение популярных аниме"""
         try:
-            logger.info(f"Получение {limit} популярных аниме")
             shikimori_results = self.shikimori.get_popular_anime(limit)
             
             if not shikimori_results:
-                logger.warning("Не удалось получить популярные аниме")
                 return []
             
             enriched_results = []
             for anime in shikimori_results:
-                enriched_anime = self._enrich_with_kodik(anime)
+                enriched_anime = self._enrich_with_kodik_fast(anime)
                 enriched_results.append(enriched_anime)
                 
-            logger.info(f"Найдено {len(enriched_results)} популярных аниме")
             return enriched_results
             
         except Exception as e:
@@ -679,17 +596,13 @@ class HybridAnimeService:
     def get_anime_details(self, anime_id, shikimori_id=None):
         """Получение детальной информации об аниме"""
         try:
-            # Если есть shikimori_id, используем его для получения полной информации
             if shikimori_id:
-                logger.info(f"Получение деталей аниме из Shikimori: {shikimori_id}")
                 shikimori_anime = self.shikimori.get_anime(shikimori_id)
                 if shikimori_anime:
                     enriched = self._enrich_with_kodik(shikimori_anime)
                     return enriched
             
-            # Fallback: поиск в Kodik по ID
-            logger.info(f"Fallback поиск в Kodik: {anime_id}")
-            kodik_results = self.kodik.search_by_title("")  # Получаем любые результаты
+            kodik_results = self.kodik.search_by_title("")
             if kodik_results and 'results' in kodik_results:
                 for anime in kodik_results['results']:
                     if anime.get('id') == anime_id:
@@ -701,38 +614,51 @@ class HybridAnimeService:
             logger.error(f"Ошибка при получении деталей аниме: {e}")
             return None
 
-    def _enrich_with_kodik(self, shikimori_anime):
-        """Обогащение аниме из Shikimori данными из Kodik"""
+    def _enrich_with_kodik_fast(self, shikimori_anime):
+        """Быстрое обогащение данными из Kodik (только для списков)"""
         try:
-            # Ищем в Kodik по shikimori_id
+            # Для списков используем только данные Shikimori + минимальную проверку Kodik
+            merged = self._convert_shikimori_format(shikimori_anime)
+            
+            # Асинхронно пробуем найти в Kodik, но не блокируем выполнение
+            if hasattr(self.kodik, 'token') and self.kodik.token:
+                try:
+                    # Быстрый поиск без блокировки
+                    future = executor.submit(self.kodik.search_by_shikimori_id, shikimori_anime['id'])
+                    # Не ждём результат, обрабатываем в фоне
+                except Exception:
+                    pass
+            
+            return merged
+            
+        except Exception as e:
+            logger.error(f"Ошибка при быстром обогащении аниме {shikimori_anime.get('id')}: {e}")
+            return self._convert_shikimori_format(shikimori_anime)
+
+    def _enrich_with_kodik(self, shikimori_anime):
+        """Полное обогащение данными из Kodik (для детальных страниц)"""
+        try:
             kodik_results = self.kodik.search_by_shikimori_id(shikimori_anime['id'])
             
-            # Если не нашли по ID, пробуем по названию
             if not kodik_results or not kodik_results.get('results'):
                 title = shikimori_anime.get('russian') or shikimori_anime.get('name', '')
                 if title:
                     kodik_results = self.kodik.search_by_title(title)
             
-            # Объединяем данные
-            enriched = self._merge_anime_data(shikimori_anime, kodik_results)
-            
-            return enriched
+            merged = self._merge_anime_data(shikimori_anime, kodik_results)
+            return merged
             
         except Exception as e:
             logger.error(f"Ошибка при обогащении аниме {shikimori_anime.get('id')}: {e}")
-            # Возвращаем только данные Shikimori
             return self._convert_shikimori_format(shikimori_anime)
 
     def _merge_anime_data(self, shikimori_anime, kodik_results):
         """Объединение данных из Shikimori и Kodik"""
-        # Начинаем с данных Shikimori
         merged = self._convert_shikimori_format(shikimori_anime)
         
-        # Добавляем данные Kodik если есть
         if kodik_results and kodik_results.get('results'):
-            kodik_anime = kodik_results['results'][0]  # Берем первый результат
+            kodik_anime = kodik_results['results'][0]
             
-            # Добавляем важные поля из Kodik
             merged.update({
                 'kodik_id': kodik_anime.get('id'),
                 'link': kodik_anime.get('link'),
@@ -743,58 +669,42 @@ class HybridAnimeService:
                 'screenshots': kodik_anime.get('screenshots', [])
             })
             
-            # *** ИСПРАВЛЕНИЕ: Улучшенная проверка постеров ***
             shikimori_poster = merged.get('material_data', {}).get('poster_url', '')
             kodik_material = kodik_anime.get('material_data', {})
             kodik_poster = kodik_material.get('poster_url', '')
             
-            # Проверяем, нужно ли заменить постер Shikimori на Kodik
             should_replace_poster = (
-                # Если постер - placeholder
                 shikimori_poster.startswith('https://via.placeholder.com') or
-                # Если в URL есть "404" (индикатор недоступности)
                 '404' in shikimori_poster.lower() or
-                # Если постер пустой
                 not shikimori_poster or
-                # Если URL содержит типичные индикаторы ошибок
                 any(error_indicator in shikimori_poster.lower() 
                     for error_indicator in ['not_found', 'notfound', 'error', 'missing', 'no+image'])
             )
             
             if should_replace_poster and kodik_poster:
-                logger.info(f"Заменяем проблемный постер Shikimori на Kodik для аниме {shikimori_anime.get('id')}")
-                logger.info(f"Старый URL: {shikimori_poster}")
-                logger.info(f"Новый URL: {kodik_poster}")
-                
                 merged['material_data']['poster_url'] = kodik_poster
                 merged['material_data']['anime_poster_url'] = kodik_poster
-            
-            # Если постер выглядит нормально, но все же может быть недоступен, проверяем доступность
             elif shikimori_poster and not shikimori_poster.startswith('https://via.placeholder.com'):
-                if not self._check_image_availability(shikimori_poster):
-                    if kodik_poster and self._check_image_availability(kodik_poster):
-                        logger.info(f"HTTP проверка: заменяем недоступный постер Shikimori на Kodik для аниме {shikimori_anime.get('id')}")
-                        merged['material_data']['poster_url'] = kodik_poster
-                        merged['material_data']['anime_poster_url'] = kodik_poster
-                    else:
-                        logger.warning(f"Постер Shikimori недоступен, Kodik также не подходит: {shikimori_anime.get('id')}")
-                        merged['material_data']['poster_url'] = 'https://via.placeholder.com/300x400/8B5CF6/FFFFFF?text=Нет+постера'
-                        merged['material_data']['anime_poster_url'] = 'https://via.placeholder.com/300x400/8B5CF6/FFFFFF?text=Нет+постера'
+                # Быстрая проверка без блокировки
+                try:
+                    future = executor.submit(self._check_image_availability_async, shikimori_poster)
+                    # Не блокируем выполнение
+                except Exception:
+                    pass
         
         return merged
 
     def _convert_shikimori_format(self, shikimori_anime):
         """Конвертация формата Shikimori в наш формат"""
-        # Мапим поля Shikimori на наш формат
         converted = {
-            'id': f"shiki_{shikimori_anime['id']}",  # Префикс для различения
+            'id': f"shiki_{shikimori_anime['id']}",
             'shikimori_id': shikimori_anime['id'],
             'title': shikimori_anime.get('russian') or shikimori_anime.get('name', ''),
             'title_orig': shikimori_anime.get('name', ''),
             'other_title': shikimori_anime.get('synonyms', []),
             'year': None,
             'type': 'anime',
-            'link': None,  # Будет заполнено из Kodik
+            'link': None,
             'kodik_id': None,
             'translation': None,
             'quality': None,
@@ -803,7 +713,6 @@ class HybridAnimeService:
             'seasons': None,
             'screenshots': [],
             
-            # Материальные данные (совместимость с шаблонами)
             'material_data': {
                 'title': shikimori_anime.get('russian') or shikimori_anime.get('name', ''),
                 'title_en': shikimori_anime.get('name', ''),
@@ -829,42 +738,35 @@ class HybridAnimeService:
             }
         }
         
-        # Устанавливаем год
         if converted['material_data']['year']:
             converted['year'] = converted['material_data']['year']
             
         return converted
 
     def _get_poster_url(self, shikimori_anime):
-        """Получение URL постера из Shikimori с улучшенной обработкой ошибок"""
+        """Получение URL постера из Shikimori"""
         image = shikimori_anime.get('image', {})
         
         if isinstance(image, dict):
-            # Получаем URL и добавляем домен Shikimori если нужно
             poster_url = None
             
-            # Пробуем разные размеры (от большего к меньшему)
             for size in ['original', 'preview', 'x96', 'x48']:
                 if image.get(size):
                     poster_url = image[size]
                     break
             
             if poster_url:
-                # Если URL относительный, добавляем домен Shikimori
                 if poster_url.startswith('/'):
                     poster_url = f"https://shikimori.one{poster_url}"
                 elif not poster_url.startswith('http'):
                     poster_url = f"https://shikimori.one{poster_url}"
                 
-                # *** ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: если URL содержит индикаторы ошибок ***
                 if any(error_indicator in poster_url.lower() 
                        for error_indicator in ['404', 'not_found', 'notfound', 'error', 'missing', 'no+image']):
-                    logger.warning(f"Обнаружен проблемный URL постера: {poster_url}")
                     return 'https://via.placeholder.com/300x400/8B5CF6/FFFFFF?text=Нет+постера'
                 
                 return poster_url
         
-        # Fallback постер
         return 'https://via.placeholder.com/300x400/8B5CF6/FFFFFF?text=Нет+постера'
 
     def _extract_year(self, date_string):
@@ -876,14 +778,8 @@ class HybridAnimeService:
                 pass
         return None
 
-# ИСПРАВЛЕНИЕ: Ленивая инициализация сервиса
-_anime_service_instance = None
-
-def get_anime_service():
-    global _anime_service_instance
-    if _anime_service_instance is None:
-        _anime_service_instance = HybridAnimeService()
-    return _anime_service_instance
+# Инициализация сервиса
+anime_service = HybridAnimeService()
 
 # ===== РОУТЫ АВТОРИЗАЦИИ =====
 
@@ -896,7 +792,6 @@ def register():
         password = request.form.get('password', '')
         confirm_password = request.form.get('confirm_password', '')
         
-        # Валидация
         if not username or len(username) < 3:
             flash('Имя пользователя должно содержать минимум 3 символа', 'error')
             return render_template('auth/register.html')
@@ -914,7 +809,6 @@ def register():
             return render_template('auth/register.html')
         
         try:
-            # Проверяем уникальность
             conn = get_db_connection()
             existing_user = conn.execute(
                 'SELECT id FROM users WHERE username = ? OR email = ?',
@@ -926,7 +820,6 @@ def register():
                 conn.close()
                 return render_template('auth/register.html')
             
-            # Создаем пользователя
             password_hash = hash_password(password)
             conn.execute(
                 'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
@@ -938,7 +831,7 @@ def register():
             flash('Регистрация успешна! Теперь вы можете войти в систему', 'success')
             return redirect(url_for('login'))
         except Exception as e:
-            logger.error(f"Registration error: {e}")
+            logger.error(f"Ошибка регистрации: {e}")
             flash('Ошибка при регистрации', 'error')
     
     return render_template('auth/register.html')
@@ -970,7 +863,6 @@ def login():
                 flash('Аккаунт заблокирован', 'error')
                 return render_template('auth/login.html')
             
-            # Создаем сессию
             session['user_id'] = user['id']
             session['username'] = user['username']
             session['role'] = user['role']
@@ -978,8 +870,8 @@ def login():
             flash(f'Добро пожаловать, {user["username"]}!', 'success')
             return redirect(url_for('index'))
         except Exception as e:
-            logger.error(f"Login error: {e}")
-            flash('Ошибка при входе', 'error')
+            logger.error(f"Ошибка входа: {e}")
+            flash('Ошибка при входе в систему', 'error')
     
     return render_template('auth/login.html')
 
@@ -997,12 +889,11 @@ def get_comments(anime_id):
     """Получение комментариев к аниме"""
     try:
         episode = request.args.get('episode', type=int)
-        sort_by = request.args.get('sort', 'newest')  # newest, oldest, rating
+        sort_by = request.args.get('sort', 'newest')
         show_spoilers = request.args.get('spoilers', 'false') == 'true'
         
         conn = get_db_connection()
         
-        # Базовый запрос
         query = '''
             SELECT c.*, u.username, u.avatar_url, u.role,
                    COUNT(CASE WHEN cv.vote_type = 'like' THEN 1 END) as likes,
@@ -1014,23 +905,20 @@ def get_comments(anime_id):
         '''
         params = [anime_id]
         
-        # Фильтр по эпизоду
         if episode:
             query += ' AND c.episode_number = ?'
             params.append(episode)
         
-        # Фильтр спойлеров
         if not show_spoilers:
             query += ' AND c.is_spoiler = 0'
         
         query += ' GROUP BY c.id'
         
-        # Сортировка
         if sort_by == 'oldest':
             query += ' ORDER BY c.created_at ASC'
         elif sort_by == 'rating':
             query += ' ORDER BY (c.likes - c.dislikes) DESC, c.created_at DESC'
-        else:  # newest
+        else:
             query += ' ORDER BY c.created_at DESC'
         
         comments = conn.execute(query, params).fetchall()
@@ -1075,7 +963,6 @@ def add_comment():
         
         conn = get_db_connection()
         
-        # Проверяем, не оставлял ли пользователь уже комментарий к этому аниме/эпизоду
         existing = conn.execute(
             'SELECT id FROM comments WHERE user_id = ? AND anime_id = ? AND episode_number = ?',
             (session['user_id'], anime_id, episode_number)
@@ -1085,7 +972,6 @@ def add_comment():
             conn.close()
             return jsonify({'success': False, 'error': 'Вы уже оставили комментарий к этому эпизоду'}), 400
         
-        # Добавляем комментарий
         cursor = conn.execute(
             '''INSERT INTO comments (anime_id, user_id, content, is_spoiler, rating, episode_number)
                VALUES (?, ?, ?, ?, ?, ?)''',
@@ -1093,7 +979,6 @@ def add_comment():
         )
         comment_id = cursor.lastrowid
         
-        # Получаем добавленный комментарий с данными пользователя
         comment = conn.execute(
             '''SELECT c.*, u.username, u.avatar_url, u.role
                FROM comments c
@@ -1125,20 +1010,18 @@ def vote_comment(comment_id):
     """Лайк/дизлайк комментария"""
     try:
         data = request.get_json()
-        vote_type = data.get('vote_type')  # 'like' или 'dislike'
+        vote_type = data.get('vote_type')
         
         if vote_type not in ['like', 'dislike']:
             return jsonify({'success': False, 'error': 'Неверный тип голоса'}), 400
         
         conn = get_db_connection()
         
-        # Проверяем существование комментария
         comment = conn.execute('SELECT id FROM comments WHERE id = ?', (comment_id,)).fetchone()
         if not comment:
             conn.close()
             return jsonify({'success': False, 'error': 'Комментарий не найден'}), 404
         
-        # Проверяем, голосовал ли пользователь уже
         existing_vote = conn.execute(
             'SELECT vote_type FROM comment_votes WHERE comment_id = ? AND user_id = ?',
             (comment_id, session['user_id'])
@@ -1146,25 +1029,21 @@ def vote_comment(comment_id):
         
         if existing_vote:
             if existing_vote['vote_type'] == vote_type:
-                # Убираем голос
                 conn.execute(
                     'DELETE FROM comment_votes WHERE comment_id = ? AND user_id = ?',
                     (comment_id, session['user_id'])
                 )
             else:
-                # Меняем голос
                 conn.execute(
                     'UPDATE comment_votes SET vote_type = ? WHERE comment_id = ? AND user_id = ?',
                     (vote_type, comment_id, session['user_id'])
                 )
         else:
-            # Добавляем новый голос
             conn.execute(
                 'INSERT INTO comment_votes (comment_id, user_id, vote_type) VALUES (?, ?, ?)',
                 (comment_id, session['user_id'], vote_type)
             )
         
-        # Получаем обновленные лайки/дизлайки
         votes = conn.execute(
             '''SELECT 
                    COUNT(CASE WHEN vote_type = 'like' THEN 1 END) as likes,
@@ -1193,7 +1072,6 @@ def delete_comment(comment_id):
     try:
         conn = get_db_connection()
         
-        # Проверяем права на удаление
         comment = conn.execute(
             'SELECT user_id FROM comments WHERE id = ?', (comment_id,)
         ).fetchone()
@@ -1202,12 +1080,10 @@ def delete_comment(comment_id):
             conn.close()
             return jsonify({'success': False, 'error': 'Комментарий не найден'}), 404
         
-        # Только автор или админ может удалить
         if comment['user_id'] != session['user_id'] and session.get('role') != 'admin':
             conn.close()
             return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
         
-        # Удаляем комментарий и связанные голоса
         conn.execute('DELETE FROM comment_votes WHERE comment_id = ?', (comment_id,))
         conn.execute('DELETE FROM comments WHERE id = ?', (comment_id,))
         
@@ -1220,27 +1096,21 @@ def delete_comment(comment_id):
         logger.error(f"Ошибка удаления комментария: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ===== НОВЫЕ API ДЛЯ АЛЬТЕРНАТИВНЫХ ПОСТЕРОВ =====
+# ===== API ДЛЯ АЛЬТЕРНАТИВНЫХ ПОСТЕРОВ =====
 
 @app.route('/api/anime/<anime_id>/alternative-poster')
 def get_alternative_poster(anime_id):
     """Получение альтернативного постера от Kodik для аниме"""
     try:
-        # Извлекаем shikimori_id если anime_id имеет префикс
         shikimori_id = None
         if anime_id.startswith('shiki_'):
             shikimori_id = anime_id.replace('shiki_', '')
         
-        anime_service = get_anime_service()
-        
-        # Ищем в Kodik
         kodik_results = None
         if shikimori_id:
             kodik_results = anime_service.kodik.search_by_shikimori_id(shikimori_id)
         
-        # Если не нашли по ID, пробуем поиск по названию
         if not kodik_results or not kodik_results.get('results'):
-            # Получаем информацию об аниме из Shikimori для поиска по названию
             if shikimori_id:
                 shikimori_anime = anime_service.shikimori.get_anime(shikimori_id)
                 if shikimori_anime:
@@ -1248,22 +1118,19 @@ def get_alternative_poster(anime_id):
                     if title:
                         kodik_results = anime_service.kodik.search_by_title(title)
         
-        # Проверяем результаты
         if kodik_results and kodik_results.get('results'):
             kodik_anime = kodik_results['results'][0]
             kodik_material = kodik_anime.get('material_data', {})
             kodik_poster = kodik_material.get('poster_url')
             
             if kodik_poster:
-                # Проверяем доступность постера от Kodik
-                if anime_service._check_image_availability(kodik_poster):
+                if anime_service._check_image_availability_async(kodik_poster):
                     return jsonify({
                         'success': True,
                         'poster_url': kodik_poster,
                         'source': 'kodik'
                     })
         
-        # Если не нашли постер от Kodik, возвращаем placeholder
         return jsonify({
             'success': True,
             'poster_url': 'https://via.placeholder.com/300x400/8B5CF6/FFFFFF?text=Нет+постера',
@@ -1285,28 +1152,17 @@ def index():
     try:
         logger.info("Загрузка главной страницы")
         
-        # Получаем информацию о текущем сезоне
         current_season, current_year = get_current_season()
         season_name_ru = get_season_name_ru(current_season)
         season_emoji = get_season_emoji(current_season)
         
-        logger.info(f"Текущий сезон: {current_season} {current_year} ({season_name_ru})")
-        
-        anime_service = get_anime_service()
-        
-        # Получаем сезонные аниме (новинки текущего сезона)
         seasonal_anime = anime_service.get_seasonal_anime(current_season, current_year, 12)
-        
-        # Получаем популярные аниме всех времён  
         popular_anime = anime_service.get_popular_anime(24)
         
-        # Если сезонных аниме мало или нет, дополняем популярными
         if len(seasonal_anime) < 6:
-            logger.info("Сезонных аниме мало, дополняем популярными")
             seasonal_anime.extend(popular_anime[:6])
-            seasonal_anime = seasonal_anime[:6]  # Ограничиваем до 6
+            seasonal_anime = seasonal_anime[:6]
         
-        # Получаем текущего пользователя
         current_user = get_current_user()
         
         return render_template('index.html', 
@@ -1339,10 +1195,8 @@ def catalog():
         year_to = request.args.get('year_to', '')
         status = request.args.get('status', '')
         anime_type = request.args.get('type', '')
-        season = request.args.get('season', '')  # Новый параметр сезона
-        year = request.args.get('year', '')      # Год для сезона
-        
-        logger.info(f"Каталог запрос: q='{query}', genre={genre}, year_from={year_from}, year_to={year_to}, status={status}, type={anime_type}, season={season}, year={year}")
+        season = request.args.get('season', '')
+        year = request.args.get('year', '')
         
         filters = {}
         if genre:
@@ -1358,19 +1212,15 @@ def catalog():
         if season and year:
             filters['season'] = f"{season}_{year}"
             
-        anime_service = get_anime_service()
         anime_list = []
         
-        # Если запрос сезонного аниме
         if season and year:
             anime_list = anime_service.get_seasonal_anime(season, int(year), 24)
         elif query or filters:
             anime_list = anime_service.search_anime(query, filters)
         else:
-            # По умолчанию показываем популярные
             anime_list = anime_service.get_popular_anime(24)
             
-        logger.info(f"Возвращаем {len(anime_list)} аниме")
         return render_template('catalog.html', 
                              anime_list=anime_list,
                              query=query,
@@ -1387,17 +1237,12 @@ def watch(anime_id):
     """Страница просмотра аниме"""
     try:
         shikimori_id = request.args.get('sid')
-        logger.info(f"Просмотр аниме: id={anime_id}, shikimori_id={shikimori_id}")
-        
-        anime_service = get_anime_service()
         anime = anime_service.get_anime_details(anime_id, shikimori_id)
         
         if not anime:
-            logger.warning(f"Аниме не найдено: {anime_id}")
             return render_template('error.html', 
                                  message="Аниме не найдено"), 404
         
-        # Сохраняем в историю просмотров если пользователь авторизован
         current_user = get_current_user()
         if current_user:
             try:
@@ -1432,7 +1277,6 @@ def api_search():
         if not query:
             return jsonify({"error": "Запрос не может быть пустым"}), 400
             
-        anime_service = get_anime_service()
         results = anime_service.search_anime(query)
         return jsonify({"results": results})
     except Exception as e:
@@ -1443,12 +1287,9 @@ def api_search():
 def health_check():
     """Проверка состояния сервиса"""
     try:
-        # Проверяем доступность API
-        anime_service = get_anime_service()
         shikimori_status = "OK"
         kodik_status = "OK" if anime_service.kodik.token else "NO_TOKEN"
         
-        # Тестовый запрос к Shikimori
         try:
             test_result = anime_service.shikimori._make_request('animes', {'limit': 1})
             if not test_result:
@@ -1493,26 +1334,24 @@ def dmca():
     """DMCA процедуры"""
     return render_template('legal/dmca.html', current_user=get_current_user())
 
+# Инициализация при запуске только если БД не существует
+if not os.path.exists('anivest.db'):
+    init_db()
+
 if __name__ == '__main__':
-    # ИСПРАВЛЕНИЕ: Настройки для продакшена
+    current_season, current_year = get_current_season()
+    season_name_ru = get_season_name_ru(current_season)
+    season_emoji = get_season_emoji(current_season)
+    
+    logger.info(f"🚀 Запуск Anivest с интеграцией Shikimori + Kodik")
+    logger.info(f"🌟 Текущий сезон: {season_emoji} {season_name_ru} {current_year}")
+    logger.info(f"🖼️ Включена улучшенная система проверки постеров")
+    
+    if anime_service.kodik.get_token():
+        logger.info("✅ Kodik API готов")
+    else:
+        logger.warning("⚠️ Kodik API недоступен - будут показаны только данные Shikimori")
+    
+    # Получаем порт из переменной окружения для Render
     port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('FLASK_ENV') == 'development'
-    
-    # Инициализация при запуске для локального сервера
-    if debug:
-        current_season, current_year = get_current_season()
-        season_name_ru = get_season_name_ru(current_season)
-        season_emoji = get_season_emoji(current_season)
-        
-        logger.info(f"🚀 Запуск Anivest с интеграцией Shikimori + Kodik")
-        logger.info(f"🌟 Текущий сезон: {season_emoji} {season_name_ru} {current_year}")
-        logger.info(f"🖼️ Включена улучшенная система проверки постеров")
-        
-        # Проверяем доступность API
-        anime_service = get_anime_service()
-        if anime_service.kodik.get_token():
-            logger.info("✅ Kodik API готов")
-        else:
-            logger.warning("⚠️ Kodik API недоступен - будут показаны только данные Shikimori")
-    
-    app.run(debug=debug, host='0.0.0.0', port=port)
+    app.run(debug=False, host='0.0.0.0', port=port)
